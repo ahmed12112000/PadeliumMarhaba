@@ -31,7 +31,7 @@ data class SearchListResponseDTO(
     val logo: String?,
     val key: String?,
     val timeSpan: Int,
-    val createdDate: String, // Change to String if it comes as a string
+    val createdDate: String,
     val establishmentId: Long,
     val client: Boolean,
     val fromStr: String,

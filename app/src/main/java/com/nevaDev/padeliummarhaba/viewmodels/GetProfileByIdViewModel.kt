@@ -22,17 +22,12 @@ class GetProfileByIdViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _reservationsData =
-        MutableLiveData<DataResultBooking<GetReservationResponse>>() // Keep it for a single response
+        MutableLiveData<DataResultBooking<GetReservationResponse>>()
     val reservationsData: LiveData<DataResultBooking<GetReservationResponse>> get() = _reservationsData
 
     private val _profilesData =
-        MutableLiveData<DataResultBooking<GetReservationIDResponse>>() // Keep it for a single response
+        MutableLiveData<DataResultBooking<GetReservationIDResponse>>()
     val profilesData: LiveData<DataResultBooking<GetReservationIDResponse>> get() = _profilesData
-
-    /**
-     * Fetch the first reservation (if available).
-     */
-
 
 
     /**
@@ -64,7 +59,6 @@ class GetProfileByIdViewModel @Inject constructor(
                         errorMessage = e.localizedMessage ?: "Unknown error occurred"
                     )
                 )
-                Log.e("GetProfileById", "Error fetching profile", e)
             }
         }
     }

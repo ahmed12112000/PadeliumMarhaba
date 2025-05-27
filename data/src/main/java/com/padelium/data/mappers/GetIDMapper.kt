@@ -1,4 +1,5 @@
 package com.padelium.data.mappers
+
 import com.padelium.data.dto.GetReservationIDResponseDTO
 import com.padelium.domain.dto.GetReservationIDResponse
 import java.math.BigDecimal
@@ -6,14 +7,13 @@ import java.time.Instant
 import javax.inject.Inject
 
 class GetIDMapper @Inject constructor()  {
-
     fun mapGetReservationResponseToGetReservationResponse(getReservationList: GetReservationIDResponseDTO): GetReservationIDResponse {
         return GetReservationIDResponse(
-                id = getReservationList.id ?: 0, // Default to 0 if id is null
-                from = getReservationList.from?.toString() ?: "", // Converting Instant to String or default empty string
+                id = getReservationList.id ?: 0,
+                from = getReservationList.from?.toString() ?: "",
                 to = getReservationList.to?.toString() ?: "",
                 annulationDate = getReservationList.annulationDate ?: Instant.now(),
-                sellAmount = getReservationList.sellAmount, // BigDecimal to Double
+                sellAmount = getReservationList.sellAmount,
                 purchaseAmount = getReservationList.purchaseAmount,
                 numberOfPlayer = getReservationList.numberOfPlayer ?: 0,
                 reference = getReservationList.reference ?: "",
@@ -83,5 +83,4 @@ class GetIDMapper @Inject constructor()  {
                 createdStr = getReservationList.createdStr ?: ""
             )
         }
-
 }

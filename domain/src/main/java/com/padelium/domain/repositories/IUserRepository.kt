@@ -9,9 +9,9 @@ import retrofit2.Response
 
 
 interface IUserRepository {
+    suspend fun signupUser(loginRequest: SignupRequest): Response<Void>
 
     suspend fun loginUser(loginRequest: LoginRequest): Response<ResponseBody>
-    suspend fun signupUser(loginRequest: SignupRequest): Response<Void>
     suspend fun logoutUser(loginRequest: logoutRequest): Response<ResponseBody>
 
 }

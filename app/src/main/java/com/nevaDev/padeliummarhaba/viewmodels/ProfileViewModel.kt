@@ -1,34 +1,22 @@
 package com.nevaDev.padeliummarhaba.viewmodels
 
 import android.app.Application
-import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.padelium.domain.dataresult.DataResult
-import com.padelium.domain.dataresult.Resulta
-import com.padelium.domain.dto.GetProfileResponse
-import com.padelium.domain.dto.ProfileRequest
 import com.padelium.domain.usecases.ProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.FileInputStream
 import javax.inject.Inject
-
-
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val profileUseCase: ProfileUseCase,
-    private val application: Application // Inject Application context
+    private val application: Application
 ) : ViewModel() {
 
-    // LiveData to observe the result of the profile update operation
     val dataResult = MutableLiveData<DataResult>()
 
     /**
@@ -37,15 +25,11 @@ class ProfileViewModel @Inject constructor(
      * @param imageUri The URI of the image being uploaded.
      */
     fun Profile(accountJson: String, imageUri: Uri?) {
-        // Set the LiveData to Loading state
         dataResult.value = DataResult.Loading
 
-        // Launch a coroutine in the ViewModelScope
         viewModelScope.launch {
-            // Use the context from the Application to pass it to the use case
             val result = profileUseCase.Profile(accountJson, imageUri, application.applicationContext)
 
-            // Update the LiveData with the result
             dataResult.value = result
         }
     }

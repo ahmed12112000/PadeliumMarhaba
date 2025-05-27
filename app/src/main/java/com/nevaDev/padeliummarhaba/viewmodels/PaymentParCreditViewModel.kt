@@ -14,7 +14,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PaymentParCreditViewModel @Inject constructor(private val paymentParCreditUseCase: PaymentParCreditUseCase):
-    ViewModel(){
+    ViewModel()
+{
 
 
     val dataResult = MutableLiveData<DataResult>()

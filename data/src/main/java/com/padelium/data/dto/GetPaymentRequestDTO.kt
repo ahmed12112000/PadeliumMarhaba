@@ -1,6 +1,5 @@
 package com.padelium.data.dto
 
-import com.padelium.domain.dto.bookingIds
 
 data class GetPaymentRequestDTO(
     val bookingIds: List<Long>,

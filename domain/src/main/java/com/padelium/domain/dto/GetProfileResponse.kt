@@ -2,7 +2,7 @@ package com.padelium.domain.dto
 
 data class GetProfileResponse(
     val activated: Boolean = false,
-    val authorities: String,
+    val authorities: List<String> = emptyList(),
     val avoir: String = 0L.toString(),
     val createdBy: String = "",
     val valcreatedDate: String = "",

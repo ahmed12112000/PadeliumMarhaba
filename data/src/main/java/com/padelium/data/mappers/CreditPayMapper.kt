@@ -7,39 +7,37 @@ import javax.inject.Inject
 
 
 class CreditPayMapper @Inject constructor() {
-
     fun CreditPayResponseToCreditPayResponseDTO(creditPayResponseList: List<CreditPayResponseDTO>): List<CreditPayResponse> {
         return creditPayResponseList.map { response ->
             CreditPayResponse(
                 id = response.id,
                 amount = response.amount?: BigDecimal.ZERO,
-                created = response.created ?: "", // Provide a default value for nullable fields
-                updated = response.updated ?: "", // Default to empty string if null
+                created = response.created ?: "",
+                updated = response.updated ?: "",
                 createdBy = response.createdBy,
-                updatedBy = response.updatedBy ?: 0, // Default to 0 if null
-                description = response.description ?: "", // Default to empty string
+                updatedBy = response.updatedBy ?: 0,
+                description = response.description ?: "",
                 userId = response.userId,
-                userLogin = response.userLogin ?: "", // Default to empty string
-                userFirstName = response.userFirstName ?: "", // Default to empty string
-                userLastName = response.userLastName ?: "", // Default to empty string
-                bookingId = response.bookingId ?: 0, // Default to 0 if null
-                bookingReference = response.bookingReference ?: "", // Default to empty string
-                bookingSellAmount = response.bookingSellAmount ?: "", // Default to empty string
-                bookingCreation = response.bookingCreation ?: "", // Default to empty string
-                bookingEstablishmentName = response.bookingEstablishmentName ?: "", // Default to empty string
-                createdByFirstName = response.createdByFirstName ?: "", // Default to empty string
-                createdByLastName = response.createdByLastName ?: "", // Default to empty string
-                createdByLogin = response.createdByLogin ?: "", // Default to empty string
-                token = response.token ?: "", // Default to empty string
-                transactionId = response.transactionId ?: "", // Default to empty string
+                userLogin = response.userLogin ?: "",
+                userFirstName = response.userFirstName ?: "",
+                userLastName = response.userLastName ?: "",
+                bookingId = response.bookingId ?: 0,
+                bookingReference = response.bookingReference ?: "",
+                bookingSellAmount = response.bookingSellAmount ?: "",
+                bookingCreation = response.bookingCreation ?: "",
+                bookingEstablishmentName = response.bookingEstablishmentName ?: "",
+                createdByFirstName = response.createdByFirstName ?: "",
+                createdByLastName = response.createdByLastName ?: "",
+                createdByLogin = response.createdByLogin ?: "",
+                token = response.token ?: "",
+                transactionId = response.transactionId ?: "",
                 userAvoirTypeId = response.userAvoirTypeId,
-                userAvoirTypeName = response.userAvoirTypeName ?: "", // Default to empty string
-                createdStr = response.createdStr ?: "", // Default to empty string
-                buyerId = response.buyerId ?: "", // Default to empty string
-                packId = response.packId ?: "", // Default to empty string
-                bookingEstablishmentCode = response.bookingEstablishmentCode ?: "" // Default to empty string
+                userAvoirTypeName = response.userAvoirTypeName ?: "",
+                createdStr = response.createdStr ?: "",
+                buyerId = response.buyerId ?: "",
+                packId = response.packId ?: "",
+                bookingEstablishmentCode = response.bookingEstablishmentCode ?: ""
             )
         }
     }
-
 }

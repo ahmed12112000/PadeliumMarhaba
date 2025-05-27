@@ -1,6 +1,6 @@
 package com.essid.orangebanque.di
 
-import com.padelium.data.repositoriesImp.UserRepositoryImp
+import com.padelium.data.repositoriesImp.RepositoryImp.UserRepositoryImp
 import com.padelium.domain.repositories.IUserRepository
 import dagger.Binds
 import dagger.Module

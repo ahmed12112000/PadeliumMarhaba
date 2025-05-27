@@ -35,6 +35,6 @@ dependencies {
     implementation(project(":domain"))
     implementation (libs.okhttp )
     implementation (libs.okhttp )
-    implementation ("com.squareup.retrofit2:retrofit:2.x.x") // Retrofit if you're using it
-    implementation ("com.squareup.retrofit2:converter-gson:2.x.x") // Gson converter for Retrofit
+    implementation ("com.squareup.retrofit2:retrofit:2.x.x")
+    implementation ("com.squareup.retrofit2:converter-gson:2.x.x")
 }

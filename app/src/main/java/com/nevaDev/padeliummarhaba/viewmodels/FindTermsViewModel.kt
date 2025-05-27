@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import okhttp3.RequestBody
 import javax.inject.Inject
 
+
 @HiltViewModel
 class FindTermsViewModel @Inject constructor(
     private val findTermsUseCase: FindTermsUseCase
@@ -38,12 +39,12 @@ class FindTermsViewModel @Inject constructor(
     private val _privateExtras = MutableLiveData<List<Long>>(emptyList())
     val privateExtras: LiveData<List<Long>> = _privateExtras
 
-    // Function to update the shared extras list
+    val navigationEvent = MutableLiveData<String>()
+
     fun updateSharedExtras(newSharedExtras: List<Long>) {
         _sharedExtras.value = newSharedExtras
     }
 
-    // Function to update the private extras list
     fun updatePrivateExtras(newPrivateExtras: List<Long>) {
         _privateExtras.value = newPrivateExtras
     }
@@ -52,10 +53,8 @@ class FindTermsViewModel @Inject constructor(
      * Fetch players matching the search term with an optional limit to restrict the number of players fetched.
      */
     fun findTerms(term: RequestBody, limit: Int? = null) {
-        // Cancel the previous job if it's still running
-        searchJob?.cancel()
 
-        // Start a new job to debounce the input
+        searchJob?.cancel()
         searchJob = viewModelScope.launch {
             delay(150)
             _players.value = DataResult.Loading
@@ -64,17 +63,21 @@ class FindTermsViewModel @Inject constructor(
                 if (result is DataResult.Success) {
                     allPlayersData = result.data as? List<FindTermsResponse> ?: emptyList()
 
-                    // Apply the limit if provided, else fetch all
                     val limitedResults = limit?.let {
-                        allPlayersData.take(it) // Limit the results to 'limit' number of players
+                        allPlayersData.take(it)
                     } ?: allPlayersData
 
                     _players.value = DataResult.Success(limitedResults)
                     _playerFullNames.value = limitedResults.map { it.fullName }
                 } else {
                     _players.value = result
+
+                    if (result is DataResult.Failure && result.errorCode != 200) {
+                        navigationEvent.value = "server_error_screen"
+                    }
                 }
             } catch (e: Exception) {
+
                 _players.value = DataResult.Failure(exception = e, errorCode = null, errorMessage = e.localizedMessage)
             }
         }
@@ -86,31 +89,10 @@ class FindTermsViewModel @Inject constructor(
     fun getPlayerByFullName(fullName: String): FindTermsResponse? {
         return allPlayersData.find { it.fullName.equals(fullName, ignoreCase = true) }
     }
-
-
-
-
-    /**
-     * Add a selected player's ID to the list.
-     */
-    fun addSelectedPlayer(playerId: Long) {
-        val updatedList = _selectedPlayers.value ?: mutableListOf()
-        if (!updatedList.contains(playerId)) {
-            updatedList.add(playerId)
-            _selectedPlayers.value = updatedList
-        }
+    fun getPlayerById(id: Long): FindTermsResponse? {
+        return allPlayersData.find { it.id == id }
     }
 
-    /**
-     * Remove a selected player's ID from the list.
-     */
-    fun removeSelectedPlayer(playerId: Long) {
-        val updatedList = _selectedPlayers.value ?: mutableListOf()
-        if (updatedList.contains(playerId)) {
-            updatedList.remove(playerId)
-            _selectedPlayers.value = updatedList
-        }
-    }
 }
 
 

@@ -2,8 +2,6 @@ package com.padelium.domain.dto
 
 import java.math.BigDecimal
 
-
-
 data class ExtrasResponse(
      val id: Long,
      val name: String,

@@ -8,6 +8,4 @@ interface ISearchListRepository {
 
     suspend fun searchlist (key: String): Response<List<SearchListResponse>>
 
-
 }
-//       suspend fun GetBooking (key: String): Response<List<GetBookingResponse>>

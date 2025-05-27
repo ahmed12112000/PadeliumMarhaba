@@ -1,18 +1,19 @@
 <resources>
     <string name="app_name">Padelium Marhaba</string>
-    <string name="login">Login</string>
-    <string name="password">Password</string>
-    <string name="password_error">Password must contain at least 8 characters</string>
-    <string name="forgot_password">Forgot password?</string>
-    <string name="login_button">Login</string>
+    <string name="login">Se connecter</string>
+    <string name="password">Mot de Passe</string>
+    <string name="password_error">Mot de Passe doit contenir au moins 8 caractères</string>
+    <string name="forgot_password">Mot de passe oublié ?</string>
+    <string name="login_button">Se connecter</string>
     <string name="email">Email</string>
     <string name="email_error">Veuillez entrer une adresse e-mail valide</string>
-    <string name="signinbutoon">"vous n'avez pas de compte ?"</string>
+    <string name="signinbutoon">"Vous n'avez pas de compte ?"</string>
     <string name="signinredirection">"S'inscrire"</string>
     <string name="firstName">Nom</string>
     <string name="lastName">Prénom</string>
     <string name="signup_button">"S'inscrire"</string>
     <string name="logininbutoon">Déja inscrit ?</string>
     <string name="loginredirection">"S'identifier"</string>
+    <string name="Reset_button">RÉINITIALISER LE MOT DE PASSE</string>
 
 </resources>

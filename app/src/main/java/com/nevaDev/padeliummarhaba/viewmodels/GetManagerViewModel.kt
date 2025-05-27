@@ -1,6 +1,5 @@
 package com.nevaDev.padeliummarhaba.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -11,7 +10,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-
 @HiltViewModel
 class GetManagerViewModel @Inject constructor(
     private val getManagerUseCase: GetManagerUseCase
@@ -19,6 +17,8 @@ class GetManagerViewModel @Inject constructor(
 
     private val _dataResult = MutableLiveData<DataResult>()
     val dataResult: LiveData<DataResult> = _dataResult
+
+    val navigationEvent = MutableLiveData<String>()
 
     /**
      * Fetch manager data for the given booking IDs.
@@ -31,19 +31,17 @@ class GetManagerViewModel @Inject constructor(
 
             when (result) {
                 is DataResult.Success -> {
-                    Log.d("GetManagerViewModel", "GetManager successful with no body expected.")
                 }
                 is DataResult.Failure -> {
-                    Log.e(
-                        "GetManagerViewModel",
-                        "GetManager failed: Code = ${result.errorCode}, Message = ${result.errorMessage}"
-                    )
+                    if (result.errorCode != 200) {
+                        navigationEvent.value = "server_error_screen"
+                    }
                 }
                 else -> {
-                    Log.e("GetManagerViewModel", "GetManager encountered an unknown state")
                 }
             }
         }
     }
 }
+
 

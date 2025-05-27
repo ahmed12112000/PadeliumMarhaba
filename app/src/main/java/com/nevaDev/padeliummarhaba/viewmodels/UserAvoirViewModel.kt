@@ -1,6 +1,5 @@
 package com.nevaDev.padeliummarhaba.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,7 +12,8 @@ import javax.inject.Inject
 
 
 @HiltViewModel
-class UserAvoirViewModel @Inject constructor(private val paymentAvoirUseCase: PaymentAvoirUseCase) : ViewModel() {
+class UserAvoirViewModel @Inject constructor(private val paymentAvoirUseCase: PaymentAvoirUseCase) : ViewModel()
+{
 
     val dataResult = MutableLiveData<DataResult>()
 
@@ -24,11 +24,9 @@ class UserAvoirViewModel @Inject constructor(private val paymentAvoirUseCase: Pa
             try {
                 val result = paymentAvoirUseCase.PaymentAvoir(userAvoirRequest)
                 if (result is DataResult.Success && result.data == null) {
-                    Log.d("PaymentViewModel", "Payment success with no body")
                 }
                 dataResult.value = result
             } catch (e: Exception) {
-                Log.e("PaymentViewModel", "Error during payment: ${e.message}")
                 dataResult.value = DataResult.Failure(
                     exception = e,
                     errorCode = null,

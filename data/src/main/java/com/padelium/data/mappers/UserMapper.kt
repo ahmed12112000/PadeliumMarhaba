@@ -14,14 +14,6 @@ import javax.inject.Inject
 
 class UserMapper @Inject constructor() {
 
-    fun loginRequestToLoginRequestDto(loginRequest: LoginRequest): LoginRequestDto {
-        return LoginRequestDto(
-            username = loginRequest.username,
-            password = loginRequest.password
-        )
-    }
-
-
     fun signupRequestToSignupRequestDto(signupRequest: SignupRequest): SignupRequestDTO {
         return SignupRequestDTO(
             firstName = signupRequest.firstName,

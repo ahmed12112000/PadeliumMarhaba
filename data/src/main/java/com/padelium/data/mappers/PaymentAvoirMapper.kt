@@ -13,7 +13,6 @@ class PaymentAvoirMapper @Inject constructor() {
             currency = userAvoirRequest.currency,
             orderId = userAvoirRequest.orderId
 
-
         )
     }
 }

@@ -1,6 +1,5 @@
 package com.nevaDev.padeliummarhaba.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -24,8 +23,6 @@ class GetPacksViewModel @Inject constructor(private val repository: IGetPacksRep
         viewModelScope.launch {
             try {
                 val packs = repository.GetPacks()
-                Log.d("GetPacks", "Packs: $packs")  // Log the response
-
                 _packsData.postValue(DataResult.Success(packs))
             } catch (e: Exception) {
                 _packsData.postValue(

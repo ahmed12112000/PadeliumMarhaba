@@ -32,12 +32,12 @@ data class SearchListResponse(
     val logo: String?,
     val key: String?,
     val timeSpan: Int,
-    val createdDate: String, // Change to String if it comes as a string
+    val createdDate: String,
     val establishmentId: Long,
     val client: Boolean,
     val plannings: List<PlanningDTO>,
-    val to: Instant = Instant.now(), // Default value
-    val available: Int = 0, // Default value
+    val to: Instant = Instant.now(),
+    val available: Int = 0,
     val adress: String,
     val created: Instant,
     val updated: Instant,
@@ -88,6 +88,5 @@ data class SearchListResponse(
     val secondPrice: Boolean,
     val isHappyHours: Boolean,
     val annulationDate: String,
-   // val HappyHours: List<happyHours>
 )
 

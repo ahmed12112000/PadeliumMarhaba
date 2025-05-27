@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Color.Companion.White
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -31,9 +30,7 @@ import androidx.navigation.compose.rememberNavController
 
 @Composable
 fun PaymentSuccessScreen(navController: NavController) {
-    val context = LocalContext.current
 
-    // A simple box with a success message
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -79,7 +76,6 @@ fun PaymentSuccessScreen(navController: NavController) {
 @Preview(showBackground = true)
 @Composable
 fun PaymentSuccessScreenPreview() {
-    // Mock a NavController for preview purposes
     val mockNavController = rememberNavController()
     PaymentSuccessScreen(navController = mockNavController)
 }

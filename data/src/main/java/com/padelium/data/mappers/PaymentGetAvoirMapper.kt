@@ -10,7 +10,6 @@ import javax.inject.Inject
 
 
 class PaymentGetAvoirMapper @Inject constructor() {
-
     fun PaymentGetAvoirRequestToPaymentGetAvoirRequestDTO(paymentGetAvoirRequest: PaymentGetAvoirRequest): PaymentGetAvoirRequestDTO {
         return PaymentGetAvoirRequestDTO(
             amount = paymentGetAvoirRequest.amount,
@@ -21,8 +20,8 @@ class PaymentGetAvoirMapper @Inject constructor() {
             )
     }
 }
-class PaymentPartBookingMapper @Inject constructor() {
 
+class PaymentPartBookingMapper @Inject constructor() {
     fun PaymentPartBookingRequestToPaymentPartBookingRequestDTO(paymentGetAvoirRequest: PaymentPartBookingRequest): PaymentPartBookingRequestDTO {
         return PaymentPartBookingRequestDTO(
             privateExtrasIds = paymentGetAvoirRequest.privateExtrasIds,
@@ -35,7 +34,6 @@ class PaymentPartBookingMapper @Inject constructor() {
 }
 
 class PaymentParCreditMapper @Inject constructor() {
-
     fun PaymentParCreditRequestToPaymentParCreditRequestDTO(paymentParCreditRequest: PaymentParCreditRequest): PaymentParCreditRequestDTO {
         return PaymentParCreditRequestDTO(
             privateExtrasIds = paymentParCreditRequest.privateExtrasIds,

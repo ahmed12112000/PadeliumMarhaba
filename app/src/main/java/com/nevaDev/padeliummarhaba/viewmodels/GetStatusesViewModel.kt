@@ -1,6 +1,5 @@
 package com.nevaDev.padeliummarhaba.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -14,7 +13,8 @@ import javax.inject.Inject
 
 
 @HiltViewModel
-class GetStatusesViewModel @Inject constructor(private val repository: IGetStatusesRepository) : ViewModel() {
+class GetStatusesViewModel @Inject constructor(private val repository: IGetStatusesRepository) : ViewModel()
+{
 
     private val _ReservationsData1 =
         MutableLiveData<DataResultBooking<List<GetStatusesResponse>>>()
@@ -26,7 +26,6 @@ class GetStatusesViewModel @Inject constructor(private val repository: IGetStatu
         viewModelScope.launch {
             try {
                 val response = repository.GetStatuses()
-                Log.d("GetReservation", "Fetched Reservations: $response")
 
                 if (response.isNotEmpty()) {
                     _ReservationsData1.postValue(DataResultBooking.Success(response))
@@ -47,7 +46,6 @@ class GetStatusesViewModel @Inject constructor(private val repository: IGetStatu
                         errorMessage = "Exception occurred: ${e.message}"
                     )
                 )
-                Log.e("GetReservation", "Error fetching reservations", e)
             }
         }
     }

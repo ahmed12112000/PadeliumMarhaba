@@ -15,17 +15,5 @@ class PaymentMapper @Inject constructor() {
             orderId = paymentRequest.orderId
         )
     }
-
-    fun PaymentResponseToPaymentResponseDTO(paymentResponse: PaymentResponse): PaymentResponse {
-        return PaymentResponse(
-            payUrl = paymentResponse.payUrl ?: "",
-            paymentRef = paymentResponse.paymentRef ?: "",
-            orderId = paymentResponse.orderId ?: "",
-            formUrl = paymentResponse.formUrl ?: "",
-            errorCode = paymentResponse.errorCode ?: "",
-            errorMessage = paymentResponse.errorMessage ?: "",
-            orderStatus = paymentResponse.orderStatus ?: ""
-        )
-    }
 }
 

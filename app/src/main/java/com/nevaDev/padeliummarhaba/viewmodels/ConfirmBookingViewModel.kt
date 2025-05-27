@@ -12,12 +12,12 @@ import javax.inject.Inject
 
 
 @HiltViewModel
-class ConfirmBookingViewModel @Inject constructor(private val confirmBookingUseCase: ConfirmBookingUseCase):
-    ViewModel(){
-
+class ConfirmBookingViewModel @Inject constructor(
+    private val confirmBookingUseCase: ConfirmBookingUseCase
+) : ViewModel() {
 
     val dataResult = MutableLiveData<DataResult>()
-
+    val navigationEvent = MutableLiveData<String>()
 
     /**
      * Start getting data
@@ -25,8 +25,22 @@ class ConfirmBookingViewModel @Inject constructor(private val confirmBookingUseC
     fun GetPayment(confirmBookingRequest: ConfirmBookingRequest) {
         dataResult.value = DataResult.Loading
         viewModelScope.launch {
-            dataResult.value=confirmBookingUseCase.ConfirmBooking(confirmBookingRequest)
+            val result = confirmBookingUseCase.ConfirmBooking(confirmBookingRequest)
+            when (result) {
+                is DataResult.Success -> {
+                    dataResult.value = result
+                }
+                is DataResult.Failure -> {
+                    dataResult.value = result // Handle failure
+                    if (result.errorCode != 200) {
+                        navigationEvent.value = "server_error_screen"
+                    }
+                }
+                else -> {
+                    dataResult.value = DataResult.Failure(null, null, "Unexpected result")
+                }
+            }
         }
     }
-
 }
+

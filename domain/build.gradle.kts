@@ -30,14 +30,13 @@ android {
     }
 
     composeOptions {
-        // Use a version of Compose compatible with Kotlin 1.8
-        kotlinCompilerExtensionVersion = "1.5.1" // Adjust this version as necessary
+        kotlinCompilerExtensionVersion = "1.5.1"
     }
 
     packaging {
         resources {
             excludes += listOf(
-                "/META-INF/versions/9/OSGI-INF/MANIFEST.MF",  // Exclude specific MANIFEST.MF files
+                "/META-INF/versions/9/OSGI-INF/MANIFEST.MF",
                 "/META-INF/AL2.0",
                 "/META-INF/LGPL2.1"
             )
@@ -49,7 +48,7 @@ dependencies {
     implementation (libs.androidx.compose.compiler)
     implementation (libs.androidx.compose.runtime)
     implementation(libs.hilt.android)
-    // implementation(project(":data"))
+    implementation(libs.androidx.navigation.runtime)
     kapt(libs.hilt.android.compiler)
     implementation (libs.squareup.retrofit)
     implementation (libs.squareup.converter.gson)

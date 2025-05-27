@@ -11,7 +11,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class SharedExtrasViewModel @Inject constructor(private val sharedExtrasUseCase: SharedExtrasUseCase) : ViewModel() {
+class SharedExtrasViewModel @Inject constructor(private val sharedExtrasUseCase: SharedExtrasUseCase) : ViewModel()
+{
 
     private val _extrasState = MutableLiveData<DataResult>()
     val extrasState1: LiveData<DataResult> get() = _extrasState
@@ -30,7 +31,7 @@ class SharedExtrasViewModel @Inject constructor(private val sharedExtrasUseCase:
             2 -> totalSharedExtrasCost / 2
             3 -> (totalSharedExtrasCost / 4) * 3
             4 -> totalSharedExtrasCost
-            else -> totalSharedExtrasCost // Default case
+            else -> totalSharedExtrasCost
         }
     }
 }

@@ -9,6 +9,7 @@
 
 
 
+
     <application
         android:name="com.nevaDev.PadeliumApplication"
         android:networkSecurityConfig="@xml/network_security_config"
@@ -18,12 +19,19 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
+        android:enableOnBackInvokedCallback="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.PadeliumMarhaba"
         tools:targetApi="31">
+
+
         <activity
             android:name="com.nevaDev.padeliummarhaba.ui.activities.MainActivity"
+            android:screenOrientation="portrait"
             android:exported="true"
+            android:windowSoftInputMode="adjustPan"
+
+            android:launchMode="singleTask"
             android:label="@string/app_name"
             android:theme="@style/Theme.PadeliumMarhaba">
             <intent-filter>
@@ -32,6 +40,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+
+
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3949862097656667~6185300904"/>

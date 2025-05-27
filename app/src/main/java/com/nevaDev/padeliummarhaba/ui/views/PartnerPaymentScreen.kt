@@ -5,15 +5,18 @@ import android.net.http.SslError
 import android.util.Log
 import android.webkit.SslErrorHandler
 import android.webkit.WebResourceRequest
-import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -31,19 +34,21 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.nevaDev.padeliummarhaba.viewmodels.FindTermsViewModel
+import com.nevaDev.padeliummarhaba.viewmodels.GetProfileViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.PartnerPayViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.PaymentParCreditViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.PaymentPartBookingViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.PaymentPartViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.PrivateExtrasViewModel
 import com.padelium.domain.dataresult.DataResult
-import com.padelium.domain.dto.PaymentParCreditRequest
 import com.padelium.domain.dto.PaymentPartBookingRequest
 import com.padelium.domain.dto.PaymentRequest
 import com.padelium.domain.dto.PaymentResponse
 import com.padelium.domain.dto.PrivateExtrasResponse
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
 
 
 @Composable
@@ -55,12 +60,13 @@ fun PartnerPaymentScreen(
     viewModel2: PaymentParCreditViewModel = hiltViewModel(),
 
     ) {
-
+    var showPopup by remember { mutableStateOf(false) }
+    val viewModel: GetProfileViewModel = hiltViewModel()
+    var totalPrice by remember { mutableStateOf(BigDecimal.ZERO) }
     var isLoading by remember { mutableStateOf(false) }
     val partnerPayResponse by viewModel4.partnerPayResponse.observeAsState()
     var selectedExtras by remember { mutableStateOf<List<Triple<String, String, Int>>>(emptyList()) }
     var totalExtrasCost by remember { mutableStateOf(0.0) }
-    val context = LocalContext.current
     val privateList = remember { mutableStateOf<MutableList<Long>>(mutableListOf()) }
 
     LaunchedEffect(partnerPayId) {
@@ -73,6 +79,9 @@ fun PartnerPaymentScreen(
         totalExtrasCost = newTotalExtrasCost
     }
 
+    fun handleTotalPriceCalculated(newTotalPrice: BigDecimal) {
+        totalPrice = newTotalPrice
+    }
 
     Column(
         modifier = Modifier
@@ -81,41 +90,39 @@ fun PartnerPaymentScreen(
             .background(Color.White),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Extras Section
         androidx.compose.material3.Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(Color.White),
             elevation = CardDefaults.cardElevation(4.dp)
         ) {
-            ExtrasSection2(onExtrasUpdate = ::updateExtras,privateList = privateList)
+            ExtrasSection2(onExtrasUpdate = ::updateExtras, privateList = privateList)
         }
 
-        // Reservation Summary Section
         androidx.compose.material3.Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(Color.White),
             elevation = CardDefaults.cardElevation(4.dp)
         ) {
-            // Call ReservationSummary2 to display it in the card
             partnerPayResponse?.let { response ->
                 ReservationSummary2(
                     viewModel4 = viewModel4,
-                    selectedExtras,
-                    totalExtrasCost
+                    selectedExtras = selectedExtras,
+                    totalExtrasCost = totalExtrasCost,
+                    onTotalPriceCalculated = { newTotalPrice ->
+                        handleTotalPriceCalculated(newTotalPrice)
+                    }
                 )
+
             } ?: run {
-                // Optionally show a placeholder or loading state if no reservation is selected
                 Text(
                     text = "No reservation selected",
                     modifier = Modifier.padding(16.dp),
-                  //  style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
 
-        // Purchase Credits Section
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -128,132 +135,154 @@ fun PartnerPaymentScreen(
             )
         }
 
-        // Buttons for Payment
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .offset(x = 10.dp),
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+
                     .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
-                Button(
-                    onClick = {
-                        viewModel4.partnerPayResponse.observeForever { response ->
-                            response?.let {
-                                val totalAmount = (response.amount + totalExtrasCost.toBigDecimal()).setScale(2, RoundingMode.HALF_UP)
+                var errorMessage by remember { mutableStateOf("") }
+                Row(modifier = Modifier.weight(1.1f)) {
 
-                                val paymentRequest = PaymentRequest(
-                                    amount = totalAmount.toString(),
-                                    currency = "DT",
-                                    orderId = response.id.toString()
-                                )
+                    Button(
+                        onClick = {
+                            viewModel4.partnerPayResponse.observeForever { response ->
+                                response?.let {
+                                    val totalAmount =
+                                        (response.amount + totalExtrasCost.toBigDecimal()).setScale(
+                                            2,
+                                            RoundingMode.HALF_UP
+                                        )
 
-                                viewModel3.PaymentPart(paymentRequest)
+                                    val paymentRequest = PaymentRequest(
+                                        amount = totalAmount.toString(),
+                                        currency = "DT",
+                                        orderId = response.id.toString()
+                                    )
 
-                                viewModel3.dataResult.observeForever { paymentResult ->
-                                    when (paymentResult) {
-                                        is DataResult.Loading -> {
-                                            Log.d("Payment", "Processing payment...")
-                                        }
+                                    viewModel3.PaymentPart(paymentRequest)
 
-                                        is DataResult.Success -> {
-                                            Log.d("Payment", "Payment processed successfully!")
+                                    viewModel3.dataResult.observeForever { paymentResult ->
+                                        when (paymentResult) {
+                                            is DataResult.Loading -> {
+                                                errorMessage = "" }
 
-                                            val paymentResponse = paymentResult.data as? PaymentResponse
-                                            val formUrl = paymentResponse?.formUrl
-                                            val orderId = paymentResponse?.orderId
-                                            val encodedBookingId = Uri.encode(paymentRequest.orderId)
-                                            val privateListString = privateList.value.joinToString(",")
-                                            val encodedPrivateList = Uri.encode(privateListString)
-                                            val encodedPartnerPayId = Uri.encode(partnerPayId ?: "")
+                                            is DataResult.Success -> {
 
-                                            if (!formUrl.isNullOrEmpty() && !orderId.isNullOrEmpty()) {
-                                                val encodedUrl = Uri.encode(formUrl)
+                                                val paymentResponse =
+                                                    paymentResult.data as? PaymentResponse
+                                                val formUrl = paymentResponse?.formUrl
+                                                val orderId = paymentResponse?.orderId
+                                                val encodedBookingId =
+                                                    Uri.encode(paymentRequest.orderId)
+                                                val privateListString =
+                                                    privateList.value.joinToString(",")
+                                                val encodedPrivateList =
+                                                    Uri.encode(privateListString)
+                                                val encodedPartnerPayId =
+                                                    Uri.encode(partnerPayId ?: "")
 
-                                                val navigationRoutee =
-                                                    "WebViewScreen2?formUrl=$encodedUrl&orderId=$orderId&BookingId=$encodedBookingId&privateList=$encodedPrivateList&encodedPartnerPayId=$encodedPartnerPayId"
+                                                if (!formUrl.isNullOrEmpty() && !orderId.isNullOrEmpty()) {
+                                                    val encodedUrl = Uri.encode(formUrl)
 
-                                                Log.d("NavigationDebug", "Navigating to: $navigationRoutee")
-                                                navController.navigate(navigationRoutee)
+                                                    val navigationRoutee =
+                                                        "WebViewScreen2?formUrl=$encodedUrl&orderId=$orderId&BookingId=$encodedBookingId&privateList=$encodedPrivateList&encodedPartnerPayId=$encodedPartnerPayId"
 
+                                                    navController.navigate(navigationRoutee)
+                                                    errorMessage = ""
+                                                } else {
 
-                                            } else {
-                                                Log.e("Payment", "No form URL found in the response.")
-                                                Toast.makeText(context, "Payment failed: No form URL received.", Toast.LENGTH_LONG).show()
+                                                    errorMessage = "Cette réservation n'est pas disponible pour le moment."
+                                                }
                                             }
-                                        }
 
-                                        is DataResult.Failure -> {
-                                            Log.e("Payment", "Payment failed: ${paymentResult.errorMessage}")
-                                            Toast.makeText(context, "Payment failed: ${paymentResult.errorMessage}", Toast.LENGTH_LONG).show()
+                                            is DataResult.Failure -> {
+                                                errorMessage = "Payment failed: ${paymentResult.errorMessage}"
+                                            }
                                         }
                                     }
                                 }
                             }
+                        },
+                        enabled = !isLoading,
+                        modifier = Modifier
+                            .offset(x = -15.dp)
+                            .height(48.dp)
+                            .weight(1f),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0054D8)),
+                        shape = RoundedCornerShape(13.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Payment,
+                                contentDescription = "Card Payment",
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            androidx.compose.material3.Text(
+                                text = "Carte Crédit",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
 
-                    },
-                    enabled = !isLoading,
-                    modifier = Modifier
-                        .offset(x = -15.dp)
-                        .height(48.dp)
-                        .weight(1f),
-                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0054D8)),
-                    shape = RoundedCornerShape(13.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Payment,
-                            contentDescription = "Card Payment",
-                            tint = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        androidx.compose.material3.Text(
-                            text = "Carte Crédit",
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
                     }
+
                 }
+                if (errorMessage.isNotEmpty()) {
+                    Text(
+                        text = errorMessage,
+                        color = Color.Red,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+                Row(modifier = Modifier.weight(1.3f)) {
 
-                Button(
-                    onClick = {
-                        viewModel4.partnerPayResponse.observeForever { response ->
-                            response?.let {
+                    Button(
+                        onClick = {
 
+                            showPopup = true
 
-                                val paymentParCreditRequest = PaymentParCreditRequest(
-                                    id = partnerPayId?.toLongOrNull() ?:0L,
-                                    privateExtrasIds = privateList.value.map { it as Long? }
-                                )
-
-                                viewModel2.PaymentParCredit(paymentParCreditRequest)
-                            }
+                        },
+                        modifier = Modifier
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0054D8)),
+                        shape = RoundedCornerShape(13.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Money,
+                                contentDescription = "Credits Payment",
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            androidx.compose.material3.Text(
+                                text = "Crédit Padelium",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                    } ,
-                    modifier = Modifier
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0054D8)),
-                    shape = RoundedCornerShape(13.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Money,
-                            contentDescription = "Credits Payment",
-                            tint = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        androidx.compose.material3.Text(
-                            text = "Crédit Padelium",
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.ExtraBold
+                    }
+
+                    if (showPopup) {
+                        PopupCreditPartner(
+                            navController = navController,
+                            showPopup = showPopup,
+                            onDismiss = { showPopup = false },
+                            viewModel4 = viewModel4,
+                            partnerPayId = partnerPayId,
+                            viewModel = viewModel,
+                            totalPrice = totalPrice,
+
                         )
                     }
                 }
@@ -267,19 +296,19 @@ fun ExtrasSection2(
     onExtrasUpdate: (List<Triple<String, String, Int>>, Double) -> Unit,
     viewModel4: PrivateExtrasViewModel = hiltViewModel(),
     findTermsViewModel: FindTermsViewModel = hiltViewModel(),
-    privateList: MutableState<MutableList<Long>>, // Pass privateList from Parent
+    privateList: MutableState<MutableList<Long>>,
 
 ) {
     var additionalExtrasEnabled by remember { mutableStateOf(false) }
     val privateExtrasState by viewModel4.extrasState2.observeAsState()
     var selectedExtras by remember { mutableStateOf<List<Triple<String, String, Int>>>(emptyList()) }
+    val totalExtrasCost by remember { derivedStateOf { selectedExtras.sumOf { it.second.toDouble() } } }
 
 
     LaunchedEffect(viewModel4) {
         viewModel4.PrivateExtras()
     }
 
-    val totalExtrasCost by remember { derivedStateOf { selectedExtras.sumOf { it.second.toDouble() } } }
 
     Row(
         modifier = Modifier.fillMaxWidth().offset(y = (-8).dp),
@@ -370,6 +399,7 @@ fun ReservationSummary2(
     viewModel4: PartnerPayViewModel = hiltViewModel(),
     selectedExtras: List<Triple<String, String, Int>>,
     totalExtrasCost: Double,
+    onTotalPriceCalculated: (BigDecimal) -> Unit
 
     ) {
     val storedPartnerPayResponse by viewModel4.partnerPayResponse.observeAsState()
@@ -378,7 +408,6 @@ fun ReservationSummary2(
 
     LaunchedEffect(storedPartnerPayResponse) {
         storedPartnerPayResponse?.let { response ->
-            Log.d("ReservationCarddddd", "PartnerPay response updated: $response")
         }
     }
 
@@ -394,7 +423,7 @@ fun ReservationSummary2(
 
         storedPartnerPayResponse?.let { booking ->
             val totalPrice = (booking.amount + BigDecimal(totalExtrasCost)).setScale(2, RoundingMode.HALF_UP)
-
+            onTotalPriceCalculated(totalPrice)
             ReservationDetailRow(label = "Espace", value = booking.bookingEstablishmentName ?: "N/A")
             ReservationDetailRow(label = "Heure", value = booking.bookingDateStr ?: "N/A")
             ReservationDetailRow(label = "Prix", value = "${booking.amount} DT")
@@ -439,132 +468,7 @@ fun ReservationSummary2(
 }
 
 
-@Composable
-fun WebViewScreen2(
-    navController: NavController,
-    viewmodel: PaymentPartBookingViewModel,
-    formUrl: String,
 
-    ) {
-    val backStackEntry = navController.currentBackStackEntry
-    val context = LocalContext.current
-    val BookingId = backStackEntry?.arguments?.getString("BookingId")?.toLongOrNull() ?: 0L
-    val encodedPartnerPayId = backStackEntry?.arguments?.getString("encodedPartnerPayId")?.toLongOrNull() ?: 0L
-
-    val navBackStackEntry = remember { navController.currentBackStackEntry }
-    val privateListString = navBackStackEntry?.arguments?.getString("privateList") ?: ""
-    val privateList = privateListString.split(",").mapNotNull { it.toLongOrNull() }.toMutableList()
-
-    // Observe dataResult from the ViewModel    BookingId
-    val dataResult by viewmodel.dataResult.observeAsState()
-
-    // Manage the loading state
-    var isLoading by remember { mutableStateOf(true) }
-
-    // AndroidView to embed the WebView
-    AndroidView(factory = {
-        WebView(context).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.mixedContentMode =
-                WebSettings.MIXED_CONTENT_ALWAYS_ALLOW // Allow mixed content
-
-            webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                    Log.d("WebViewScreen", "Loading URL: $url")
-                    return super.shouldOverrideUrlLoading(view, url)
-                }
-
-                override fun shouldOverrideUrlLoading(
-                    view: WebView?,
-                    request: WebResourceRequest
-                ): Boolean {
-                    val url = request.url.toString()
-                    val orderId = extractOrderId2(url)
-
-                    if (orderId.isNotEmpty()) {
-                        // Extract other parameters (e.g., booking IDs, user IDs)
-                        val request1 = PaymentPartBookingRequest(
-                            privateExtrasIds = privateList,
-                            id = BookingId,
-                            bookingId = encodedPartnerPayId,
-                            orderId = orderId,
-                        )
-                        viewmodel.PaymentPartBooking(request1)
-
-
-                    } else {
-                        Log.e("WebViewScreen", "Order ID not found in URL")
-                    }
-                    navController.navigate("PaymentSuccessScreen")
-
-                    return true
-                }
-
-                override fun onReceivedSslError(
-                    view: WebView?,
-                    handler: SslErrorHandler?,
-                    error: SslError?
-                ) {
-                    // Ignore SSL certificate errors (for testing only)
-                    handler?.proceed()
-                }
-
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    super.onPageFinished(view, url)
-                    Log.d("WebView", "Page finished loading: $url")
-                    isLoading = false
-                }
-            }
-
-            // Load the initial URL
-            loadUrl(formUrl)
-        }
-    })
-    dataResult?.let { result ->
-        when (result) {
-            is DataResult.Loading -> {
-                Log.d("WebViewScreen", "Fetching payment details...")
-            }
-
-            is DataResult.Success -> {
-                Toast.makeText(context, "Payment details fetched successfully!", Toast.LENGTH_LONG)
-                    .show()
-                navController.navigate("PaymentSuccessScreen")
-            }
-
-            is DataResult.Failure -> {
-                Toast.makeText(
-                    context,
-                    "Failed to fetch payment details: ${result.errorMessage} (Code: ${result.errorCode})",
-                    Toast.LENGTH_LONG
-                ).show()
-                Log.e("WebViewScreen", "Error fetching payment details", result.exception)
-            }
-        }
-    }
-}
-
-
-
-// Utility functions with improvements
-fun extractamount1(url: String): String {
-    val uri = Uri.parse(url)
-    return uri.getQueryParameter("amount") ?: ""
-}
-fun extractpaymentRef1(url: String): String {
-    val uri = Uri.parse(url)
-    return uri.getQueryParameter("paymentRef") ?: ""
-}
-fun extractPackId1(url: String): Long {
-    val uri = Uri.parse(url)
-    val packIdString = uri.getQueryParameter("packId")
-    return packIdString?.toLongOrNull() ?: 0L
-}
-fun extractOrderId2(url: String): String {
-    val uri = Uri.parse(url)
-    return uri.getQueryParameter("orderId") ?: ""
-}
 
 
 

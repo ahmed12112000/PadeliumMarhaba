@@ -1,6 +1,5 @@
 package com.nevaDev.padeliummarhaba.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,23 +11,21 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class PaymentViewModel @Inject constructor(private val paymentUseCase: PaymentUseCase) : ViewModel() {
+class PaymentViewModel @Inject constructor(private val paymentUseCase: PaymentUseCase) : ViewModel()
+{
 
     val dataResult = MutableLiveData<DataResult>()
 
     fun Payment(paymentRequest: PaymentRequest) {
-        Log.d("PaymentViewModel", "Payment method called with orderId: ${paymentRequest.orderId}")
 
         dataResult.value = DataResult.Loading
         viewModelScope.launch {
             try {
                 val result = paymentUseCase.Payment(paymentRequest)
                 if (result is DataResult.Success && result.data == null) {
-                    Log.d("PaymentViewModel", "Payment success with no body")
                 }
                 dataResult.value = result
             } catch (e: Exception) {
-                Log.e("PaymentViewModel", "Error during payment: ${e.message}")
                 dataResult.value = DataResult.Failure(
                     exception = e,
                     errorCode = null,

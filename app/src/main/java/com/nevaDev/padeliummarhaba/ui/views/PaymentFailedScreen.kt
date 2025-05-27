@@ -17,14 +17,11 @@ import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Color.Companion.White
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -35,7 +32,6 @@ import androidx.navigation.compose.rememberNavController
 
 @Composable
 fun PaymentFailedScreen(navController: NavController) {
-    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -82,7 +78,6 @@ fun PaymentFailedScreen(navController: NavController) {
 @Preview(showBackground = true)
 @Composable
 fun PaymentFailedScreenPreview() {
-    // Mock a NavController for preview purposes
     val mockNavController = rememberNavController()
     PaymentFailedScreen(navController = mockNavController)
 }

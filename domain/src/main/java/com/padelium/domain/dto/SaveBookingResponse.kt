@@ -6,7 +6,7 @@ import com.google.gson.annotations.JsonAdapter
 import java.math.BigDecimal
 import java.time.Instant
 
-data class SaveBookingResponse(
+data class  SaveBookingResponse(
 
     val id: Long,
     val from:String,

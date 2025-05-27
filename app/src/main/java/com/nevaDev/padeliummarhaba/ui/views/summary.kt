@@ -1,22 +1,31 @@
 package com.nevaDev.padeliummarhaba.ui.views
 
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -27,8 +36,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -37,87 +50,138 @@ import com.nevaDev.padeliummarhaba.viewmodels.GetReservationViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.GetStatusesViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.PartnerPayViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.PrivateExtrasViewModel
-import com.nevaDev.padeliummarhaba.viewmodels.SharedExtrasViewModel
 import com.nevadev.padeliummarhaba.R
 import com.padelium.domain.dataresult.DataResultBooking
 import com.padelium.domain.dto.GetReservationIDResponse
 import com.padelium.domain.dto.GetReservationResponse
 import com.padelium.domain.dto.GetStatusesResponse
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.util.Calendar
 import java.util.Locale
 
-
-
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SummaryScreen(
     viewModel: GetReservationViewModel = hiltViewModel(),
     viewModel1: GetProfileByIdViewModel = hiltViewModel(),
     viewModel2: GetStatusesViewModel = hiltViewModel(),
     navController: NavController,
-
-    ) {
+) {
     var showFilterMenu by remember { mutableStateOf(false) }
-    val reservations = remember { mutableStateOf<List<GetReservationResponse>>(emptyList()) }
-    val reservations1 = remember { mutableStateOf<List<GetStatusesResponse>>(emptyList()) }
-
-    var selectedReservation by remember { mutableStateOf<GetReservationResponse?>(null) }
-    var selectedReservation1 by remember { mutableStateOf<GetReservationIDResponse?>(null) }
     var showDialog by remember { mutableStateOf(false) }
-
+    var showDatePicker by remember { mutableStateOf(false) }
+    var selectedDate by remember { mutableStateOf<Long?>(null) }
+    var filterByName by remember { mutableStateOf(false) }
+    var nameFilterText by remember { mutableStateOf("") }
+    val reservations = remember { mutableStateOf<List<GetReservationResponse>>(emptyList()) }
+    val statuses = remember { mutableStateOf<List<GetStatusesResponse>>(emptyList()) }
+    var selectedReservation by remember { mutableStateOf<GetReservationResponse?>(null) }
+    var selectedReservationProfile by remember { mutableStateOf<GetReservationIDResponse?>(null) }
     val sheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
     val coroutineScope = rememberCoroutineScope()
-
     val reservationData by viewModel.ReservationsData.observeAsState()
     val profilesData by viewModel1.profilesData.observeAsState()
-    val reservationData1 by viewModel2.ReservationsData1.observeAsState()
-
-    LaunchedEffect(reservationData) {
-        if (reservationData is DataResultBooking.Success) {
-            reservations.value =
-                (reservationData as DataResultBooking.Success<List<GetReservationResponse>>).data
-        }
-    }
-
-    LaunchedEffect(profilesData) {
-        if (profilesData is DataResultBooking.Success) {
-            selectedReservation1 =
-                (profilesData as DataResultBooking.Success<GetReservationIDResponse>).data
-        }
-    }
-
-    LaunchedEffect(reservationData1) {
-        if (reservationData1 is DataResultBooking.Success) {
-            reservations1.value =
-                (reservationData1 as DataResultBooking.Success<List<GetStatusesResponse>>).data
-        }
-    }
+    val reservationStatuses by viewModel2.ReservationsData1.observeAsState()
+    var showNameFilterPopup by remember { mutableStateOf(false) }
+    var filterByType by remember { mutableStateOf(false) }
+    var selectedStatusType by remember { mutableStateOf("") }
+    var showTypeFilterPopup by remember { mutableStateOf(false) }
+    val isLoading = reservationData == null || reservationData is DataResultBooking.Loading
+    var sortByReference by remember { mutableStateOf(false) }
+    var showSortPopup by remember { mutableStateOf(false) }
+    var filterByDate by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    var referenceFilterText by remember { mutableStateOf("") }
+    var filterByReference by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.GetReservation()
     }
 
-    LaunchedEffect(sheetState.isVisible) {
-        if (sheetState.isVisible) {
-            coroutineScope.launch {
-                sheetState.show() // Ensure the sheet properly displays
-            }
+    LaunchedEffect(reservationData) {
+        if (reservationData is DataResultBooking.Success) {
+            reservations.value = (reservationData as DataResultBooking.Success<List<GetReservationResponse>>).data
+                .sortedByDescending {
+                    LocalDate.parse(it.bookingDate, DateTimeFormatter.ofPattern("dd-MM-yyyy", Locale.FRANCE))
+                }
         }
     }
+
+    LaunchedEffect(profilesData) {
+        if (profilesData is DataResultBooking.Success) {
+            selectedReservationProfile =
+                (profilesData as DataResultBooking.Success<GetReservationIDResponse>).data
+        }
+    }
+
+    LaunchedEffect(reservationStatuses) {
+        if (reservationStatuses is DataResultBooking.Success) {
+            statuses.value = (reservationStatuses as DataResultBooking.Success<List<GetStatusesResponse>>).data
+        }
+    }
+
+
+    val filteredReservations = remember(
+        selectedDate,
+        reservations.value,
+        filterByName,
+        nameFilterText,
+        filterByType,
+        selectedStatusType,
+        sortByReference,
+        filterByReference,
+        referenceFilterText
+    ) {
+        var filteredList = reservations.value
+
+        selectedDate?.let { dateMillis ->
+            val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy", Locale.FRANCE)
+            val selectedFormattedDate = Instant.ofEpochMilli(dateMillis)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+                .format(formatter)
+
+            filteredList = filteredList.filter { it.bookingDate == selectedFormattedDate }
+        }
+
+        if (filterByName) {
+            filteredList = filteredList.filter {
+                it.establishmentName.contains(nameFilterText, ignoreCase = true)
+            }
+        }
+        if (filterByType && selectedStatusType.isNotEmpty()) {
+            filteredList = filteredList.filter {
+                it.bookingStatusName.equals(selectedStatusType, ignoreCase = true)
+            }
+        }
+
+        if (filterByReference) {
+            filteredList = filteredList.filter {
+                it.reference?.contains(referenceFilterText, ignoreCase = true) ?: false
+            }
+        }
+
+        filteredList
+    }
+
 
     ModalBottomSheetLayout(
         sheetContent = {
             selectedReservation?.let { reservation ->
-                selectedReservation1?.let { reservation1 ->
+                selectedReservationProfile?.let { profile ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .fillMaxHeight(0.87f) // Ensure height is properly set
+                            .fillMaxHeight(0.87f)
                     ) {
-                        ReservationCard1(reservation, reservation1, bookingStatusCode = reservation.bookingStatusCode)
+                        ReservationCard1(reservation, profile, bookingStatusCode = reservation.bookingStatusCode)
                     }
                 }
             }
@@ -135,112 +199,416 @@ fun SummaryScreen(
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp
             )
-            Divider(
-                modifier = Modifier.padding(vertical = 8.dp),
-                thickness = 1.dp,
-                color = Color.Gray
-            )
+            Divider(modifier = Modifier.padding(vertical = 8.dp), thickness = 1.dp, color = Color.Gray)
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp)
-                    .border(
-                        width = 1.dp,
-                        color = Color.LightGray,
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .height(56.dp)
+                    .background(Color(0xFFF5F7F9), RoundedCornerShape(16.dp))
+                    .border(1.dp, Color(0xFFE0E3E7), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Box {
-                    OutlinedButton(
-                        onClick = { showFilterMenu = !showFilterMenu },
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filter",
-                            tint = Color.Gray
-                        )
+                    OutlinedButton(onClick = { showFilterMenu = !showFilterMenu }) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = Color.Gray)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Filtrer", color = Color.Gray)
                     }
-                    DropdownMenu(
-                        expanded = showFilterMenu,
-                        onDismissRequest = { showFilterMenu = false }
-                    ) {
-                        DropdownMenuItem(onClick = { showFilterMenu = false }) {
-                            Text("By Date")
+                    DropdownMenu(expanded = showFilterMenu, onDismissRequest = { showFilterMenu = false }) {
+                        DropdownMenuItem(onClick = {
+                            filterByName = false
+                            nameFilterText = ""
+                            filterByType = false
+                            selectedStatusType = ""
+                            filterByReference = false
+                            referenceFilterText = ""
+                            selectedDate = null
+
+                            showFilterMenu = false
+                            showDatePicker = true
+                        }) {
+                            Text("Par Date")
                         }
-                        DropdownMenuItem(onClick = { showFilterMenu = false }) {
-                            Text("By Name")
-                        }
-                        DropdownMenuItem(onClick = { showFilterMenu = false }) {
-                            Text("By Type")
+
+                        DropdownMenuItem(onClick = {
+                            filterByType = false
+                            selectedStatusType = ""
+                            filterByReference = false
+                            referenceFilterText = ""
+                            selectedDate = null
+
+                            filterByName = true
+                            showFilterMenu = false
+                            showNameFilterPopup = true
+                        }) { Text("Par Nom ") }
+                        DropdownMenuItem(onClick = {
+                            filterByName = false
+                            nameFilterText = ""
+                            filterByReference = false
+                            referenceFilterText = ""
+                            selectedDate = null
+
+                            filterByType = true
+                            showFilterMenu = false
+                            showTypeFilterPopup = true
+                        }) {
+                            Text("Par État")
                         }
                     }
                 }
+                Spacer(modifier = Modifier.weight(0.1f))
 
-                Divider(
-                    color = Color.LightGray,
+                Divider(color = Color.LightGray, modifier = Modifier.height(24.dp).width(1.dp))
+
+                Spacer(modifier = Modifier.weight(0.09f))
+
+                Box(
                     modifier = Modifier
-                        .height(24.dp)
-                        .width(1.dp)
-                )
-
-                OutlinedButton(onClick = {
-                    reservations.value = reservations.value.reversed()
-                    coroutineScope.launch {
-                        sheetState.hide() // Hide the bottom sheet
-                        selectedReservation = null // Reset selected reservation
-                        selectedReservation1 = null // Reset selected reservation 1
+                        .weight(1f)
+                        .height(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            focusManager.clearFocus()
+                        }
+                ) {
+                    if (referenceFilterText.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "Référence de réservation",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
                     }
-                }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Sort,
-                        contentDescription = "Sort",
-                        tint = Color.Gray
+
+                    BasicTextField(
+                        value = referenceFilterText,
+                        onValueChange = {
+                            referenceFilterText = it
+                            filterByReference = it.isNotEmpty()
+                        },
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontSize = 12.sp,
+                            color = Color.Black
+                        ),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp)
+                            .wrapContentHeight(Alignment.CenterVertically),
+                        singleLine = true,
+                        decorationBox = { innerTextField ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "Search",
+                                    tint = Color.Gray,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .offset(x = -11.dp)
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .padding(start = 5.dp),
+
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    innerTextField()
+                                }
+                            }
+                        }
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Sort", color = Color.Gray)
                 }
+
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            reservations.value.forEach { reservation ->
-                ReservationCard(
-                    reservation = reservation,
-                    onClick = {
-                        selectedReservation = reservation
-                        viewModel1.fetchProfileById(reservation.id)
-                        coroutineScope.launch {
-                            sheetState.show() // Show the bottom sheet when a reservation is selected
+
+            if (showSortPopup) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .background(Color.White, shape = RoundedCornerShape(8.dp))
+                        .shadow(4.dp)
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        IconButton(onClick = {
+                            referenceFilterText = ""
+                            showSortPopup = false
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Fermer",
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Filtrer par référence",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(4.dp, shape = RoundedCornerShape(8.dp))
+                            .background(Color.White, shape = RoundedCornerShape(8.dp))
+                    ) {
+                        TextField(
+                            value = referenceFilterText,
+                            onValueChange = { referenceFilterText = it },
+                            label = { Text("Référence de réservation") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.Transparent),
+                            colors = TextFieldDefaults.textFieldColors(
+                                backgroundColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Gray,
+                                unfocusedIndicatorColor = Color.LightGray,
+                                focusedLabelColor = Color.LightGray,
+                                unfocusedLabelColor = Color.LightGray,
+                                cursorColor = Color.Black,
+                                textColor = Color.Black
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            filterByReference = referenceFilterText.isNotEmpty()
+                            showSortPopup = false
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF0066CC), shape = RoundedCornerShape(8.dp)),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0066CC))
+                    ) {
+                        Text(
+                            text = "Filtrer",
+                            color = Color.White,
+                            fontSize = 18.sp
+                        )
+                    }
+                }
+            }
+
+            if (showDatePicker) {
+                CustomDatePickerModal1(
+                    onDateSelected = { dateMillis ->
+                        selectedDate = dateMillis
+                        showDatePicker = false
+                    },
+                    onDismiss = { showDatePicker = false }
+                )
+            }
+
+            if (showNameFilterPopup) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .background(Color.White, shape = RoundedCornerShape(8.dp))
+                        .shadow(4.dp)
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        IconButton(onClick = {
+                            nameFilterText = ""
+                            showNameFilterPopup = false
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Fermer",
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Filtrer par nom d'espace",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(4.dp, shape = RoundedCornerShape(8.dp))
+                            .background(Color.White, shape = RoundedCornerShape(8.dp))
+                    ) {
+                        TextField(
+                            value = nameFilterText,
+                            onValueChange = { nameFilterText = it },
+                            label = { Text("Nom d'établissement") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.Transparent),
+                            colors = TextFieldDefaults.textFieldColors(
+                                backgroundColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Gray,
+                                unfocusedIndicatorColor = Color.LightGray,
+                                focusedLabelColor = Color.LightGray,
+                                unfocusedLabelColor = Color.LightGray,
+                                cursorColor = Color.Black,
+                                textColor = Color.Black
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            filterByName = nameFilterText.isNotEmpty()
+                            showNameFilterPopup = false
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF0066CC), shape = RoundedCornerShape(8.dp)),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0066CC))
+                    ) {
+                        Text(
+                            text = "Filtrer",
+                            color = Color.White,
+                            fontSize = 18.sp
+                        )
+                    }
+                }
+            }
+
+
+            if (showTypeFilterPopup) {
+                val statusOptions = listOf("Toutes Réservations", "Confirmée", "En attente de paiement")
+
+                AlertDialog(
+                    onDismissRequest = { showTypeFilterPopup = false },
+                    title = {
+                        Text(
+                            text = "Filtrer par état",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    },
+                    text = {
+                        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                            statusOptions.forEach { status ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedStatusType = status
+                                            filterByType = status != "Toutes Réservations"
+                                        }
+                                        .padding(8.dp)
+                                ) {
+                                    RadioButton(
+                                        selected = selectedStatusType.equals(status, ignoreCase = true),
+                                        onClick = {
+                                            selectedStatusType = status
+                                            filterByType = status != "Toutes Réservations"
+                                        },
+                                        colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF0066CC))
+                                    )
+                                    Text(
+                                        text = status,
+                                        fontSize = 16.sp,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            }
                         }
                     },
-                    viewModel1 = viewModel1,
-                    bookingStatusCode = reservation.bookingStatusCode,
-                    onShowDialog = { showDialog = true },
-                    navController = navController
+                    confirmButton = {
+                        TextButton(
+                            onClick = { showTypeFilterPopup = false },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFF0066CC), shape = RoundedCornerShape(8.dp))
+                        ) {
+                            Text(
+                                text = "OK",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                    }
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 50.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                filteredReservations.forEach { reservation ->
+                    ReservationCard(
+                        reservation = reservation,
+                        onClick = {
+                            selectedReservation = reservation
+                            viewModel1.fetchProfileById(reservation.id)
+                            coroutineScope.launch { sheetState.show() }
+                        },
+                        viewModel1 = viewModel1,
+                        bookingStatusCode = reservation.bookingStatusCode,
+                        onShowDialog = { showDialog = true },
+                        navController = navController
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
         }
     }
 
-    // Show dialog if needed
     if (showDialog) {
         selectedReservation?.let { reservation ->
-            selectedReservation1?.let { reservation1 ->
+            selectedReservationProfile?.let { profile ->
                 Dialog(onDismissRequest = { showDialog = false }) {
+                    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+                    val dialogHeight = (screenHeight * 0.85f)
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(dialogHeight)
                             .padding(36.dp)
                     ) {
-                        ReservationCard1(reservation, reservation1, bookingStatusCode = reservation.bookingStatusCode)
+                        ReservationCard1(reservation, profile, bookingStatusCode = reservation.bookingStatusCode)
                     }
                 }
             }
@@ -262,36 +630,26 @@ fun ReservationCard(
     viewModel5: PartnerPayViewModel = hiltViewModel(),
 
     ) {
-    val privateExtrasState by viewModel3.extrasState2.observeAsState()
-    val sharedList = remember { mutableStateOf<MutableList<Long>>(mutableListOf()) }
-    val privateList = remember { mutableStateOf<MutableList<Long>>(mutableListOf()) }
-    val bookingDate = reservation.bookingDate // Assuming this is a String like "22-01-2025"
+
+
+    val bookingDate = reservation.bookingDate
     val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy", Locale.FRANCE)
     var selectedReservation by remember { mutableStateOf<GetReservationResponse?>(null) }
     val coroutineScope = rememberCoroutineScope()
-
+    var isLoading by remember { mutableStateOf(false) }
     var selectedReservation1 by remember { mutableStateOf<GetReservationIDResponse?>(null) }
     val date = LocalDate.parse(bookingDate, formatter)
-
-    // Extract first 3 letters of the day and month in French
     val dayOfWeek = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.FRANCE).replaceFirstChar { it.uppercaseChar() }
     val month = date.month.getDisplayName(TextStyle.SHORT, Locale.FRANCE).replaceFirstChar { it.uppercaseChar() }
-
     val formattedDate = "$dayOfWeek ${date.dayOfMonth} $month ${date.year}"
-    var showDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
-    var showExtrasSection by remember { mutableStateOf(false) } // State to track visibility
     val profilesData by viewModel1.profilesData.observeAsState()
-    val profileData by viewModel2.profilesData.observeAsState()
     val partnerPayResponse by viewModel5.partnerPayResponse.observeAsState()
 
     LaunchedEffect(partnerPayResponse) {
         partnerPayResponse?.let { response ->
-            Log.d("ReservationCard", "PartnerPay response updated: $response")
-            // Perform any necessary UI updates or side effects when partnerPayResponse updates
         }
     }
-
 
     LaunchedEffect(profilesData) {
         if (profilesData is DataResultBooking.Success) {
@@ -300,18 +658,16 @@ fun ReservationCard(
         }
     }
 
-    LaunchedEffect( viewModel3) {
-        viewModel3.PrivateExtras()
-    }
+
     Card(
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(4.dp) // Reduce padding to shrink card size
+            .padding(4.dp)
             .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
             .clickable { onClick() }
     ) {
-        Column(modifier = Modifier.padding(6.dp)) { // Reduce padding inside
+        Column(modifier = Modifier.padding(6.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -325,20 +681,29 @@ fun ReservationCard(
                 val formattedAmount = if (reservation.localAmount == 0.0) {
                     "0"
                 } else {
-                    String.format("%.2f", reservation.localAmount)
+                    if (reservation.token.isNullOrEmpty()) {
+                        String.format("%.2f", reservation.localAmount)
+                    } else {
+                        String.format("%.0f", reservation.localAmount)
+                    }
+                }
+                val amountText = when {
+                    reservation.token.isNullOrEmpty() -> "$formattedAmount DT"
+                    else -> "$formattedAmount CREDIT"
                 }
 
                 Text(
-                    text = "$formattedAmount ${reservation.currencyFromSymbol}",
+                    text = amountText,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
+
             }
-            Spacer(modifier = Modifier.height(4.dp)) // Reduce spacing
+            Spacer(modifier = Modifier.height(4.dp))
 
             Column {
                 Text(
-                    text = formattedDate, // Use formatted date
+                    text = formattedDate,
                     fontWeight = FontWeight.Normal,
                     fontSize = 12.sp
                 )
@@ -348,25 +713,30 @@ fun ReservationCard(
                     fontWeight = FontWeight.Normal,
                     fontSize = 12.sp
                 )
+                Spacer(modifier = Modifier.height(7.dp))
+                Text(
+                    text = "${reservation.reference} ",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
+                )
             }
-
-            Spacer(modifier = Modifier.height(10.dp)) // Reduce spacing
+            Spacer(modifier = Modifier.height(7.dp))
 
             Text(
-                text = reservation.bookingStatusName,
+                text = if (reservation.bookingStatusName == "erreur de paiement") "en attente de paiement" else reservation.bookingStatusName,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .background(when (reservation.bookingStatusCode) {
-                        "PAY" -> Color(0xFF4CAF50) // Green for paid
-                        "WAIT" -> Color(0xFFFBC02D) // Yellow for waiting
-                        else -> Color(0xFF4CAF50) // Default to green for unknown
+                        "PAY" -> Color(0xFF4CAF50)
+                        "WAIT" -> Color(0xFFFBC02D)
+                        else -> if (reservation.bookingStatusName == "erreur de paiement") Color(0xFFFBC02D) else Color(0xFF4CAF50)
                     })
                     .padding(vertical = 4.dp, horizontal = 8.dp)
             )
-            Spacer(modifier = Modifier.height(-6.dp)) // Reduce spacing
+            Spacer(modifier = Modifier.height(-6.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -374,55 +744,60 @@ fun ReservationCard(
             ) {
                 if (selectedReservation != null && selectedReservation1 != null) {
                     LaunchedEffect(sheetState) {
-                        sheetState.show() // Show the bottom sheet when a reservation is selected
+                        sheetState.show()
                     }
                 }
                 if (reservation.activePayment) {
                     IconButton(
                         onClick = {
-                            viewModel3.PrivateExtras()
                             viewModel2.fetchProfileById(reservation.id)
                             viewModel4.partnerPay(reservation.id)
-                            Log.d("ASMMMMMMMMMA", "PartnerPay response updated: ${reservation.id}")
-                            navController.navigate("PartnerPaymentScreen/${reservation.id}") // Navigate directly with reservation.id
-
-
-
+                            navController.navigate("PartnerPaymentScreen/${reservation.id}")
                         },
-                        modifier = Modifier.size(24.dp) // Match view icon size
+                        modifier = Modifier.size(24.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.AttachMoney, // Dollar sign icon
+                            imageVector = Icons.Default.AttachMoney,
                             contentDescription = "Payment Active",
-                            modifier = Modifier.size(18.dp), // Smaller icon
-                            tint = Color.Black // Highlight it with green
+                            modifier = Modifier.size(18.dp),
+                            tint = Color.Black
                         )
                     }
                 }
                 IconButton(
                     onClick = {
-                        viewModel1.fetchProfileById(reservation.id)
-                        onClick()
-                        coroutineScope.launch {
-                            sheetState.hide() // Hide the bottom sheet
-                            selectedReservation = null // Reset selected reservation
-                            selectedReservation1 = null // Reset selected reservation 1
+                        if (!isLoading) {
+                            isLoading = true
+                            coroutineScope.launch {
+                                viewModel1.fetchProfileById(reservation.id)
+                                viewModel4.partnerPay(reservation.id)
+                                delay(500)
+                                isLoading = false
+                                onClick()
+                                sheetState.hide()
+                                selectedReservation = null
+                                selectedReservation1 = null
+                            }
                         }
                     },
-                    modifier = Modifier.size(24.dp) // Reduce icon size
+                    modifier = Modifier.size(24.dp),
+                    enabled = !isLoading
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Visibility,
-                        contentDescription = "View",
-                        modifier = Modifier.size(18.dp) // Smaller icon
-                    )
+                    if (isLoading) {
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = "View",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
                 }
             }
         }
     }
 
 }
-
 
 @Composable
 fun ReservationCard1(
@@ -441,7 +816,6 @@ fun ReservationCard1(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Top Section (Establishment Details)
         item {
             Box(
                 modifier = Modifier
@@ -473,50 +847,57 @@ fun ReservationCard1(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        val formattedAmount = "%.0f".format(reservation.sellAmount)
+
                         Text(
-                            text = "${reservation.sellAmount} ${reservation.currencyFromSymbol}",
+                            text = "${formattedAmount } DT",
                             fontWeight = FontWeight.Bold,
                             fontSize = 24.sp,
                             color = Color.Black
                         )
 
-                        Text(
-                            text = reservation.bookingStatusName,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(when (reservation.bookingStatusCode) {
-                                    "PAY" -> Color(0xFF4CAF50) // Green for paid
-                                    "WAIT" -> Color(0xFFFBC02D) // Yellow for waiting
-                                    else -> Color(0xFF4CAF50) // Default to green for unknown
-                                })
-                                .padding(vertical = 4.dp, horizontal = 8.dp)
-                        )
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = formattedDate,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.Gray
-                        )
-                        Text(
-                            text = ", ${reservation.fromStrTime} - ${reservation.toStrTime}",
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 17.sp,
-                            color = Color.Gray
-                        )
+                                Text(
+                                    text = reservation.bookingStatusName,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(
+                                            when (reservation.bookingStatusCode) {
+                                                "PAY" -> Color(0xFF4CAF50)
+                                                "WAIT" -> Color(0xFFFBC02D)
+                                                else -> Color(0xFF4CAF50)
+                                            }
+                                        )
+                                        .padding(vertical = 4.dp, horizontal = 8.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = formattedDate,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Gray
+                                )
+                                Text(
+                                    text = ", ${reservation.fromStrTime} - ${reservation.toStrTime}",
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 16.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
                     }
                 }
-            }
-        }
 
-        // Section for Payment Info
+
         item {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -528,7 +909,6 @@ fun ReservationCard1(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // First Section (Reservations and Payment Info)
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -551,17 +931,25 @@ fun ReservationCard1(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            // Left side: User Name
                             Text(userName, fontSize = 20.sp, color = Color.Gray)
 
-                            // Right side: Amount and Payment Status
                             Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    "${user.amountstr} Crédits",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(4.dp)) // Spacing between the amount and payment status
+                                if (user.paymentMode == "CREDIT") {
+                                    Text(
+                                        "${user.amountstr} DT",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                } else if (user.paymentMode == "PAIMENT EN LIGNE") {
+                                    val amountWithoutDecimal = user.amountstr.toDoubleOrNull()?.toInt()
+
+                                    Text(
+                                        "${amountWithoutDecimal} Crédits",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = paymentStatus,
                                     fontSize = 17.sp,
@@ -576,7 +964,6 @@ fun ReservationCard1(
             }
         }
 
-        // Section for Reservation Details
         item {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -604,8 +991,6 @@ fun ReservationCard1(
     }
 }
 
-
-
 @Composable
 fun TableRow(label: String, value: String, isBold: Boolean = false) {
     Row(
@@ -619,86 +1004,6 @@ fun TableRow(label: String, value: String, isBold: Boolean = false) {
     }
 }
 
-
-
-@Composable
-fun TableRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
-            color = Color.Gray
-        )
-        Text(
-            text = value,
-            fontWeight = FontWeight.Bold,
-            fontSize = 19.sp,
-            color = Color.Gray
-        )
-    }
-}
-
-
-@Composable
-fun StatusBadge(bookingStatusName: String) {
-    val (backgroundColor, statusText) = when (bookingStatusName) {
-        "PAY" -> Pair(Color(0xFF4CAF50), "Payée") // Green for paid
-        "WAIT" -> Pair(Color(0xFFFBC02D), "En attente de paiement") // Yellow for waiting
-        else -> Pair(Color(0xFF4CAF50), "nnnnnn") //Green for paid
-    }
-
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
-            .padding(vertical = 4.dp, horizontal = 8.dp)
-    ) {
-        Text(
-            text = statusText,
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp
-        )
-    }
-}
-
-@Composable
-fun StatusBadge1(statusCode: String) {
-    val (backgroundColor, statusText) = when (statusCode) {
-        "PAY" -> Pair(Color(0xFF4CAF50), "Validée") // Green for paid
-        "WAIT" -> Pair(Color(0xFFFBC02D), "En attente de paiement") // Yellow for waiting
-        else -> Pair(Color(0xFF4CAF50), "Not Defined") //Green for paid
-    }
-
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(color = Color.White)
-            .padding(vertical = 4.dp, horizontal = 8.dp)
-    ) {
-        Text(
-            text = statusText,
-            color = (backgroundColor),
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp
-        )
-    }
-}
-
-/*
-@Preview(showBackground = true)
-@Composable
-fun SummaryScreenPreview() {
-    SummaryScreen()
-}
-
- */
 
 
 @Preview
@@ -863,4 +1168,204 @@ fun PreviewReservationCard1() {
          )
     ReservationCard1(reservation = mockReservation, reservation1 = mockReservation1, bookingStatusCode ="",
     )
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CustomDatePickerModal1(
+    onDateSelected: (Long?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = remember { mutableStateOf<Long?>(null) }
+    val selectedDate = datePickerState.value
+    val today = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+    val calendar = Calendar.getInstance()
+    var currentMonth by remember { mutableStateOf(calendar.get(Calendar.MONTH)) }
+    var currentYear by remember { mutableStateOf(calendar.get(Calendar.YEAR)) }
+    calendar.set(Calendar.MONTH, currentMonth)
+    calendar.set(Calendar.YEAR, currentYear)
+    calendar.set(Calendar.DAY_OF_MONTH, 1)
+
+    val startDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+    val totalDaysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+    val frenchMonths = listOf("Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc")
+
+    Dialog(onDismissRequest = onDismiss) {
+        androidx.compose.material3.Surface(
+            color = Color.White,
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+            modifier = Modifier
+                .heightIn(min = 10.dp, max = 600.dp)
+                .padding(16.dp)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 10.dp, max = 500.dp)
+                    .background(Color.White)
+                    .padding(16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    androidx.compose.material3.IconButton(onClick = {
+                        if (currentMonth == 0) {
+                            currentMonth = 11
+                            currentYear--
+                        } else {
+                            currentMonth--
+                        }
+                    }) {
+                        androidx.compose.material3.Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Mois précédent",
+                            tint = Color.Black
+                        )
+                    }
+                    androidx.compose.material3.Text(
+                        text = "${frenchMonths[currentMonth]} $currentYear",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    androidx.compose.material3.IconButton(onClick = {
+                        if (currentMonth == 11) {
+                            currentMonth = 0
+                            currentYear++
+                        } else {
+                            currentMonth++
+                        }
+                    }) {
+                        androidx.compose.material3.Icon(
+                            Icons.Default.ArrowForward,
+                            contentDescription = "Mois suivant",
+                            tint = Color.Black
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    listOf("LUN", "MAR", "MER", "JEU", "VEN", "SAM", "DIM").forEach {
+                        androidx.compose.material3.Text(
+                            text = it,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(7),
+                    modifier = Modifier.fillMaxWidth(0.9f)
+                ) {
+                    items(startDayOfWeek - 1) {
+                        Box(modifier = Modifier.size(40.dp))
+                    }
+
+                    items(totalDaysInMonth) { day ->
+                        val normalizedCalendar = Calendar.getInstance().apply {
+                            set(Calendar.YEAR, calendar.get(Calendar.YEAR))
+                            set(Calendar.MONTH, calendar.get(Calendar.MONTH))
+                            set(Calendar.DAY_OF_MONTH, day + 1)
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                        val dateMillis = normalizedCalendar.timeInMillis
+
+                        val isSelected = selectedDate?.let {
+                            val selectedCalendar =
+                                Calendar.getInstance().apply { timeInMillis = it }
+                            selectedCalendar.get(Calendar.YEAR) == normalizedCalendar.get(
+                                Calendar.YEAR
+                            ) &&
+                                    selectedCalendar.get(Calendar.MONTH) == normalizedCalendar.get(
+                                Calendar.MONTH
+                            ) &&
+                                    selectedCalendar.get(Calendar.DAY_OF_MONTH) == normalizedCalendar.get(
+                                Calendar.DAY_OF_MONTH
+                            )
+                        } ?: false
+
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    when {
+                                        isSelected -> Color(0xFF0054D8)
+                                        else -> Color.Transparent
+                                    },
+                                    shape = CircleShape
+                                )
+                                .clickable() {
+                                    datePickerState.value = dateMillis
+                                }
+                        ) {
+                            androidx.compose.material3.Text(
+                                text = (day + 1).toString(),
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    color = when {
+                                        isSelected -> Color.White
+                                        else -> Color.Black
+                                    },
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    androidx.compose.material3.TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        androidx.compose.material3.Text(
+                            "Annuler",
+                            color = Color(0xFF0054D8),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            onDateSelected(selectedDate)
+                            onDismiss()
+                        },
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        androidx.compose.material3.Text(
+                            "OK",
+                            color = Color(0xFF0054D8),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

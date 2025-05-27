@@ -13,7 +13,6 @@ class ConfirmBookingUseCase @Inject constructor(private val confirmBookingReposi
         return try {
             val response = confirmBookingRepository.ConfirmBooking(confirmBookingRequest)
             if (response.isSuccessful) {
-                Log.e("TAG", "ConfirmBooking result: ${response.code()}")
                 DataResult.Success(response)
             } else {
                 val errorMessage = response.errorBody()?.string() ?: "Unknown error occurred"

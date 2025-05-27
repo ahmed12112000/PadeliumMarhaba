@@ -16,9 +16,9 @@ object PadeliumApiModule {
     @Provides
     fun providePadeliumApi(
         padeliumEndPoint: PadeliumEndPoint,
-        @ApplicationContext context: Context // Inject Application Context
+        @ApplicationContext context: Context
     ): PadeliumApi {
-        return PadeliumApi(padeliumEndPoint, context) // Pass Context to PadeliumApi
+        return PadeliumApi(padeliumEndPoint, context)
     }
 }
 

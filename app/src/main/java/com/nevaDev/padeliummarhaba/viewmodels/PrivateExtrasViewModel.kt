@@ -12,7 +12,8 @@ import javax.inject.Inject
 
 
 @HiltViewModel
-class PrivateExtrasViewModel @Inject constructor(private val privateExtrasUseCase: PrivateExtrasUseCase) : ViewModel() {
+class PrivateExtrasViewModel @Inject constructor(private val privateExtrasUseCase: PrivateExtrasUseCase) : ViewModel()
+{
 
     private val _extrasState = MutableLiveData<DataResult>()
     val extrasState2: LiveData<DataResult> get() = _extrasState

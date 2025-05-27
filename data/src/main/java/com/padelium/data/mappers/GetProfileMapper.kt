@@ -6,13 +6,10 @@ import javax.inject.Inject
 
 
 class GetProfileMapper @Inject constructor(){
-
-
-
         fun GetProfileResponseDTOToGetProfileResponse(getPacksResponseList: GetProfileResponseDTO): GetProfileResponse {
                 return GetProfileResponse(
                         activated = getPacksResponseList.activated ?: false,
-                        authorities = (getPacksResponseList.authorities.toString()) ,
+                        authorities = getPacksResponseList.authorities ?: emptyList(),
                         avoir = (getPacksResponseList.avoir ?: 0L).toString(),
                         createdBy = getPacksResponseList.createdBy ?: "",
                         valcreatedDate = getPacksResponseList.valcreatedDate ?: "",
@@ -32,7 +29,6 @@ class GetProfileMapper @Inject constructor(){
                         phone = getPacksResponseList.phone ?: "",
                         socialMediaId = getPacksResponseList.socialMediaId ?: ""
                 )
-
     }
 }
 

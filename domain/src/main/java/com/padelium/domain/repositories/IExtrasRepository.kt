@@ -1,7 +1,5 @@
 package com.padelium.domain.repositories
 
-import com.padelium.domain.dto.Extra
-import com.padelium.domain.dto.ExtrasRequest
 import com.padelium.domain.dto.ExtrasResponse
 import retrofit2.Call
 import retrofit2.Response

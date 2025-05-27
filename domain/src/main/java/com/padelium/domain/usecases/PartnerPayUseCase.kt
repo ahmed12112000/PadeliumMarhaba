@@ -10,11 +10,8 @@ class PartnerPayUseCase @Inject constructor(private val partnerPayRepository: IP
 
     suspend fun PartnerPay(Id: Long): DataResult {
         return try {
-            // Call the repository method with the Long ID
             val response = partnerPayRepository.PartnerPay(Id)
             if (response.isSuccessful) {
-                Log.e("TAG", "Balance result: ${response.code()}")
-                // Extract the body of the response
                 val partnerPayResponse = response.body()
                 if (partnerPayResponse != null) {
                     DataResult.Success(partnerPayResponse)

@@ -14,10 +14,9 @@ android {
 
     defaultConfig {
         applicationId = "com.spofun.padeliummarhaba"
-        versionCode = 3
+        versionCode = 45
         versionName = "2.0.8"
         minSdk = 28
-        //noinspection EditedTargetSdkVersion
         targetSdk = 34
         vectorDrawables.useSupportLibrary = true
 
@@ -55,14 +54,13 @@ android {
     }
 
     composeOptions {
-        // Use a version of Compose compatible with Kotlin 1.8
-        kotlinCompilerExtensionVersion = "1.5.1" // Adjust this version as necessary
+        kotlinCompilerExtensionVersion = "1.5.1"
     }
 
     packaging {
         resources {
             excludes += listOf(
-                "/META-INF/versions/9/OSGI-INF/MANIFEST.MF",  // Exclude specific MANIFEST.MF files
+                "/META-INF/versions/9/OSGI-INF/MANIFEST.MF",
                 "/META-INF/AL2.0",
                 "/META-INF/LGPL2.1"
             )
@@ -85,6 +83,7 @@ dependencies {
     implementation(libs.identity.jvm)
     implementation(libs.androidx.preference.ktx)
     implementation(libs.core.ktx)
+    implementation(libs.androidx.hilt.common)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -161,6 +160,16 @@ dependencies {
     implementation ("com.squareup.moshi:moshi:1.12.0")
     implementation(libs.okhttp.v4110)
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.8.22") // Update if needed
+
+    implementation("androidx.datastore:datastore-preferences:1.1.2")
+    implementation("androidx.datastore:datastore-preferences-core:1.1.2")
+
+    implementation("androidx.datastore:datastore:1.1.2")
+    implementation("androidx.datastore:datastore-core:1.1.2")
+    implementation(libs.kotlinx.coroutines.core.v160) // or the latest version
+    implementation(libs.kotlinx.coroutines.android.v181) // or the latest version
+    implementation("androidx.work:work-runtime-ktx:2.8.1")
+
 
 
 }

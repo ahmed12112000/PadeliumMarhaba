@@ -1,6 +1,5 @@
 package com.padelium.domain.usecases
 
-import android.util.Log
 import com.padelium.domain.dataresult.DataResult
 import com.padelium.domain.repositories.IBalanceRepository
 import javax.inject.Inject
@@ -12,8 +11,12 @@ class BalanceUseCase @Inject constructor(private val balanceRepository: IBalance
         return try {
             val response = balanceRepository.Balance(Id)
             if (response.isSuccessful) {
-                Log.e("TAG", "Balance result: ${response.code()}")
-                DataResult.Success(response)
+                val balance = response.body()
+                if (balance != null) {
+                    DataResult.Success(balance)
+                } else {
+                    DataResult.Failure(null, response.code(), "Balance response is null")
+                }
             } else {
                 val errorMessage = response.errorBody()?.string() ?: "Unknown error occurred"
                 DataResult.Failure(null, response.code(), errorMessage)
@@ -22,4 +25,6 @@ class BalanceUseCase @Inject constructor(private val balanceRepository: IBalance
             DataResult.Failure(ex, null, ex.localizedMessage ?: "An error occurred during balance fetching")
         }
     }
+
+
 }

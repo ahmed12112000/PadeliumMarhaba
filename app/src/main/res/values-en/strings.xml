@@ -14,5 +14,7 @@
     <string name="signup_button">"S'inscrire"</string>
     <string name="logininbutoon">Déja inscrit ?</string>
     <string name="loginredirection">"   S'identifier"</string>
+    <string name="Reset_button">RÉINITIALISER LE MOT DE PASSE</string>
+
 
 </resources>

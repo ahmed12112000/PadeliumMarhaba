@@ -1,6 +1,5 @@
 package com.nevaDev.padeliummarhaba.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -12,13 +11,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-
 @HiltViewModel
-class CreditPayViewModel @Inject constructor(private val repository: ICreditPayRepository) : ViewModel() {
+class CreditPayViewModel @Inject constructor(
+    private val repository: ICreditPayRepository
+) : ViewModel() {
 
-    private val _CreditsData =
-        MutableLiveData<DataResultBooking<List<CreditPayResponse>>>()
+    private val _CreditsData = MutableLiveData<DataResultBooking<List<CreditPayResponse>>>()
     val CreditsData: LiveData<DataResultBooking<List<CreditPayResponse>>> get() = _CreditsData
+    val navigationEvent = MutableLiveData<String>()
 
     fun GetCreditPay() {
         _CreditsData.postValue(DataResultBooking.Loading)
@@ -26,7 +26,6 @@ class CreditPayViewModel @Inject constructor(private val repository: ICreditPayR
         viewModelScope.launch {
             try {
                 val response = repository.GetCreditPay()
-                Log.d("CreditsData", "Fetched Credits: $response")
 
                 if (response.isNotEmpty()) {
                     _CreditsData.postValue(DataResultBooking.Success(response))
@@ -47,9 +46,18 @@ class CreditPayViewModel @Inject constructor(private val repository: ICreditPayR
                         errorMessage = "Exception occurred: ${e.message}"
                     )
                 )
-                Log.e("CreditsData", "Error fetching Credits", e)
+            }
+            when (val result = _CreditsData.value) {
+                is DataResultBooking.Failure -> {
+                    if (result.errorCode != 200) {
+                        navigationEvent.value = "server_error_screen"
+                    }
+                }
+                else -> {
+                }
             }
         }
     }
 }
+
 

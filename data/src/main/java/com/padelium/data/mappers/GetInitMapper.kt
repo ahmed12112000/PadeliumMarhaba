@@ -5,7 +5,6 @@ import com.padelium.domain.dto.GetInitResponse
 import javax.inject.Inject
 
 class GetInitMapper  @Inject constructor() {
-
     fun GetInitResponseToGetInitResponseDto(getInitResponse: GetInitResponse): GetInitResponseDTO {
         return GetInitResponseDTO(
             key = getInitResponse.key,

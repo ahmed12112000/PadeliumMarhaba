@@ -1,7 +1,6 @@
 package com.nevaDev.padeliummarhaba.viewmodels
 
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -30,18 +29,9 @@ class UpdatePhoneViewModel @Inject constructor(
             _dataResult.value = result
 
             when (result) {
-                is DataResult.Success -> {
-                    Log.d("GetManagerViewModel", "GetManager successful with no body expected.")
-                }
-                is DataResult.Failure -> {
-                    Log.e(
-                        "GetManagerViewModel",
-                        "GetManager failed: Code = ${result.errorCode}, Message = ${result.errorMessage}"
-                    )
-                }
-                else -> {
-                    Log.e("GetManagerViewModel", "GetManager encountered an unknown state")
-                }
+                is DataResult.Success -> {}
+                is DataResult.Failure -> {}
+                else -> {}
             }
         }
     }

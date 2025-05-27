@@ -1,12 +1,7 @@
 package com.nevaDev.padeliummarhaba.ui.views
 
-import android.app.Activity
 import android.content.Context
-import android.graphics.Color.RED
-import android.graphics.Color.WHITE
 import android.net.Uri
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -30,7 +25,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Surface
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -44,7 +38,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -53,13 +46,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.google.gson.Gson
-import com.nevaDev.padeliummarhaba.models.ReservationOption
+import com.padelium.data.dto.ReservationOption
 import com.nevaDev.padeliummarhaba.viewmodels.ExtrasViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.GetBookingViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.PaymentPayAvoirViewModel
@@ -68,22 +58,16 @@ import com.nevaDev.padeliummarhaba.viewmodels.TimeSlot
 import com.nevadev.padeliummarhaba.R
 import com.padelium.data.dto.GetBookingResponseDTO
 import com.padelium.domain.dataresult.DataResultBooking
-import com.padelium.domain.dto.LoginRequest
 import com.padelium.domain.dto.PlanningDTO
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.State
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModel
-import com.google.android.material.snackbar.Snackbar
-import android.view.View
-import android.widget.TextView
-import com.android.identity.util.AndroidAttestationExtensionParser
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.collectAsState
+import com.nevaDev.padeliummarhaba.di.SessionManager
+import com.nevaDev.padeliummarhaba.viewmodels.GetReservationViewModel
+import androidx.compose.ui.Alignment
 
 @Composable
 fun TimeSlotSelector(
@@ -91,7 +75,20 @@ fun TimeSlotSelector(
     onTimeSlotSelected: (String) -> Unit,
     selectedTimeSlot: String?
 ) {
-    val uniqueTimeSlots = timeSlots.distinctBy { it.time }
+    val uniqueTimeSlots = timeSlots
+        .distinctBy { it.time }
+        .sortedBy { it.time }
+
+    val firstTimeSlot = uniqueTimeSlots.firstOrNull()?.time?.format(DateTimeFormatter.ofPattern("H:mm"))
+
+    val selectedTime = remember { mutableStateOf(selectedTimeSlot ?: firstTimeSlot) }
+
+    LaunchedEffect(firstTimeSlot) {
+        firstTimeSlot?.let {
+            onTimeSlotSelected(it)
+            selectedTime.value = it
+        }
+    }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
@@ -103,27 +100,30 @@ fun TimeSlotSelector(
     ) {
         items(uniqueTimeSlots) { timeSlot ->
             val formattedTime = timeSlot.time.format(DateTimeFormatter.ofPattern("H:mm"))
-            val isSelected = selectedTimeSlot == formattedTime
+            val isSelected = selectedTime.value == formattedTime
 
             Button(
-                onClick = { onTimeSlotSelected(formattedTime) },
+                onClick = {
+                    selectedTime.value = formattedTime
+                    onTimeSlotSelected(formattedTime)
+                },
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) Color(0xFF0054D8) else Color.White // White background if not selected
+                    containerColor = if (isSelected) Color(0xFF0054D8) else Color.White
                 ),
                 border = if (!isSelected) {
-                    BorderStroke(1.dp, Color.Black) // Black border if not selected
+                    BorderStroke(1.dp, Color.Black)
                 } else {
-                    null // No border if selected
+                    null
                 },
                 modifier = Modifier
-                    .size(30.dp) // Reduced size for button
+                    .size(30.dp)
             ) {
                 Text(
                     text = formattedTime,
-                    color = if (selectedTimeSlot == formattedTime) Color.White else Color.Black,
+                    color = if (isSelected) Color.White else Color.Black,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp // Reduced font size
+                    fontSize = 12.sp
                 )
             }
         }
@@ -132,14 +132,9 @@ fun TimeSlotSelector(
 
 
 
-
-
-
-
 @Composable
 fun ReservationOptions(
     onReservationSelected: (ReservationOption) -> Unit,
-    isUserLoggedIn: Boolean,
     key: String?,
     navController: NavController,
     viewModel: GetBookingViewModel = hiltViewModel(),
@@ -148,50 +143,52 @@ fun ReservationOptions(
     selectedTimeSlot: String?,
     viewModel2: SaveBookingViewModel = hiltViewModel(),
     bookingViewModel: GetBookingViewModel = hiltViewModel(),
-    paymentPayAvoirViewModel : PaymentPayAvoirViewModel
+    paymentPayAvoirViewModel : PaymentPayAvoirViewModel,
+    getReservationViewModel: GetReservationViewModel
 
 ) {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val isUserLoggedIn by sessionManager.isLoggedInFlow.collectAsState()
     var amountSelected by remember { mutableStateOf<Double?>(null) }
     var currencySymbol by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showLoginPopup by remember { mutableStateOf(false) }
-
-    val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
     val dataResultBooking by viewModel.dataResultBooking.observeAsState(initial = DataResultBooking.Loading)
     val filteredTimeSlots by viewModel.filteredTimeSlots.observeAsState(emptyList())
     var selectedTimeSlot by remember { mutableStateOf<String?>(null) }
 
 
+        when (val result = dataResultBooking) {
+            is DataResultBooking.Loading -> LoadingState()
+            is DataResultBooking.Success -> SuccessState(
+                establishmentsList = result.data,
+                filteredTimeSlots = filteredTimeSlots.distinctBy { it.time },
+                isUserLoggedIn = isUserLoggedIn,
+                navController = navController,
+                bookingViewModel = bookingViewModel,
+                saveBookingViewModel = viewModel2,
+                onReservationSelected = onReservationSelected,
+                setAmountSelected = { amountSelected = it },
+                setCurrencySymbol = { currencySymbol = it },
+                showLoginPopup = { showLoginPopup = it },
+                selectedTimeSlot = selectedTimeSlot,
+                onTimeSlotSelected = { selectedTimeSlot = it },
+                paymentPayAvoirViewModel = paymentPayAvoirViewModel,
+                selectedDate = selectedDate
+            )
 
-    when (val result = dataResultBooking) {
-        is DataResultBooking.Loading -> LoadingState()
-        is DataResultBooking.Success -> SuccessState(
-            establishmentsList = result.data,
-            filteredTimeSlots = filteredTimeSlots.distinctBy { it.time }, // Ensure uniqueness
-            isUserLoggedIn = isUserLoggedIn,
-            navController = navController,
-            bookingViewModel = bookingViewModel,
-            saveBookingViewModel = viewModel2,
-            onReservationSelected = onReservationSelected,
-            setAmountSelected = { amountSelected = it },
-            setCurrencySymbol = { currencySymbol = it },
-            showLoginPopup = { showLoginPopup = it },
-            selectedTimeSlot = selectedTimeSlot,
-            onTimeSlotSelected = { selectedTimeSlot = it },
-            paymentPayAvoirViewModel= paymentPayAvoirViewModel
-
-        )
-        is DataResultBooking.Failure -> FailureState(result.errorMessage, setErrorMessage = { errorMessage = it })
+            is DataResultBooking.Failure -> FailureState(
+                result.errorMessage,
+                setErrorMessage = { errorMessage = it })
+        }
+        if (showLoginPopup) {
+        }
+        errorMessage?.let {
+            Text(text = it, color = Color.Red, modifier = Modifier.padding(16.dp))
+        }
     }
 
-    if (showLoginPopup) {
-        // Handle login popup logic
-    }
-
-    errorMessage?.let {
-        Text(text = it, color = Color.Red, modifier = Modifier.padding(16.dp))
-    }
-}
 
 @Composable
 fun LoadingState() {
@@ -199,6 +196,7 @@ fun LoadingState() {
         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
     }
 }
+
 @Composable
 fun SuccessState(
     establishmentsList: List<GetBookingResponseDTO>,
@@ -213,44 +211,46 @@ fun SuccessState(
     setAmountSelected: (Double) -> Unit,
     setCurrencySymbol: (String) -> Unit,
     showLoginPopup: (Boolean) -> Unit,
-    paymentPayAvoirViewModel: PaymentPayAvoirViewModel
-
+    paymentPayAvoirViewModel: PaymentPayAvoirViewModel,
+    selectedDate: LocalDate
 ) {
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .offset(y=280.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .offset(y = 253.dp)
     ) {
-        // Display TimeSlotSelector with deduplicated filteredTimeSlots
         TimeSlotSelector(
             timeSlots = filteredTimeSlots,
             onTimeSlotSelected = onTimeSlotSelected,
             selectedTimeSlot = selectedTimeSlot
         )
+        Spacer(modifier = Modifier.height(4.dp))
 
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize()
+        ) {
             items(establishmentsList) { getBookingResponseDTO ->
                 EstablishmentCard(
                     getBookingResponseDTO = getBookingResponseDTO,
                     filteredTimeSlots = filteredTimeSlots,
-                    isUserLoggedIn = isUserLoggedIn,
                     navController = navController,
                     bookingViewModel = bookingViewModel,
                     saveBookingViewModel = saveBookingViewModel,
                     setAmountSelected = setAmountSelected,
                     setCurrencySymbol = setCurrencySymbol,
                     selectedTimeSlot = selectedTimeSlot,
-                    paymentPayAvoirViewModel= paymentPayAvoirViewModel
-
+                    paymentPayAvoirViewModel = paymentPayAvoirViewModel,
+                    selectedDate = selectedDate
                 )
             }
         }
     }
 }
+
 @Composable
 private fun EstablishmentCard(
     getBookingResponseDTO: GetBookingResponseDTO,
     filteredTimeSlots: List<TimeSlot>,
-    isUserLoggedIn: Boolean,
     navController: NavController,
     bookingViewModel: GetBookingViewModel = hiltViewModel(),
     saveBookingViewModel: SaveBookingViewModel,
@@ -258,73 +258,51 @@ private fun EstablishmentCard(
     setCurrencySymbol: (String) -> Unit,
     viewModel1: ExtrasViewModel = hiltViewModel(),
     selectedTimeSlot: String?,
-    paymentPayAvoirViewModel: PaymentPayAvoirViewModel
+    paymentPayAvoirViewModel: PaymentPayAvoirViewModel,
+    sharedViewModel: SharedViewModel = hiltViewModel(),
+    selectedDate: LocalDate
 ) {
-    // Filter plannings by the selected time slot
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager.getInstance(context) }
+    val isUserLoggedIn by sessionManager.isLoggedInFlow.collectAsState()
     val availablePlannings = getBookingResponseDTO.plannings.filter { planning ->
         planning.fromStr == selectedTimeSlot
     }
-
-    var showLoginPopup by remember { mutableStateOf(false) }
-    val isUserLoggedIn1 by bookingViewModel.isUserLoggedIn1
-
     availablePlannings.forEach { planning ->
         val amountToShow = if (planning.reductionPrice != null && planning.reductionPrice != BigDecimal.ZERO) {
             planning.reductionPrice
         } else {
             getBookingResponseDTO.amount ?: BigDecimal.ZERO
         }
-        val context = LocalContext.current
 
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp) // Reduced padding
+                .padding(vertical = 4.dp)
                 .clickable {
                     handleCardClick(
                         selectedBooking = getBookingResponseDTO,
                         planning = planning,
                         bookingViewModel = bookingViewModel,
                         navController = navController,
-                        isUserLoggedIn = isUserLoggedIn,
-                        onLoginRequired = { showLoginPopup = true },
                         saveBookingViewModel = saveBookingViewModel,
                         viewModel1 = viewModel1,
                         onReservationSelected = { reservationOption -> },
                         paymentPayAvoirViewModel = paymentPayAvoirViewModel,
                         amountToShow = amountToShow,
-                        context = context // Pass the context here
+                        context = context,
+                        selectedDate = selectedDate,
+                        isUserLoggedIn = isUserLoggedIn,
+                        sessionmanager = sessionManager
                     )
                 },
-            shape = RoundedCornerShape(10.dp), // Slightly smaller radius
+            shape = RoundedCornerShape(10.dp),
             border = BorderStroke(1.dp, Color.Gray),
             elevation = CardDefaults.cardElevation(4.dp)
         ) {
             EstablishmentCardContent(getBookingResponseDTO, planning)
         }
     }
-
-    /*
-    if (showLoginPopup) {
-        Dialog(onDismissRequest = { showLoginPopup = false }) {
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = Color.White,
-                modifier = Modifier.padding(16.dp)
-            ) {
-                LoginScreen(
-                    onLoginSuccess = {
-                        showLoginPopup = false // Hide the popup on successful login
-                        bookingViewModel.updateLoginState(true) // Update the login state
-                    },
-                    navController = navController,
-                    loginRequest = LoginRequest(username = "", password = "") // Initialize with empty values or your logic
-                )
-            }
-        }
-    }
-
-     */
 }
 
 
@@ -334,36 +312,36 @@ private fun EstablishmentCardContent(getBookingResponseDTO: GetBookingResponseDT
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
-            .padding(6.dp), // Reduced padding for more compact layout
+            .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             painter = painterResource(id = R.drawable.logopadelium),
             contentDescription = "Establishment Icon",
             modifier = Modifier
-                .size(48.dp) // Smaller icon size
+                .size(48.dp)
                 .background(Color(0xFF0054D8), shape = CircleShape)
-                .padding(4.dp), // Reduced padding
+                .padding(4.dp),
             tint = Color.Unspecified
         )
 
-        Spacer(modifier = Modifier.width(12.dp)) // Reduced space between icon and text
+        Spacer(modifier = Modifier.width(7.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = getBookingResponseDTO.establishmentDTO?.name ?: "Unknown",
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp, // Smaller font size
+                fontSize = 14.sp,
                 color = Color.Black
             )
             Text(
                 text = "${planning.fromStr} - ${planning.toStr}",
-                fontSize = 12.sp, // Smaller font size
+                fontSize = 12.sp,
                 color = Color.Gray
             )
             Text(
                 text = "90 min",
-                fontSize = 12.sp, // Smaller font size
+                fontSize = 12.sp,
                 color = Color.Gray
             )
         }
@@ -380,7 +358,7 @@ private fun EstablishmentCardContent(getBookingResponseDTO: GetBookingResponseDT
                     Text(
                         text = "${String.format("%.2f", amountToShow)} DT",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp, // Smaller font size
+                        fontSize = 14.sp,
                         color = Color(0xFF0054D8),
                         textAlign = TextAlign.Center
                     )
@@ -401,15 +379,15 @@ private fun EstablishmentCardContent(getBookingResponseDTO: GetBookingResponseDT
                 Text(
                     text = "${String.format("%.2f", planning.reductionPrice)} DT",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp, // Smaller font size
-                    color = Color.Red, // Discounted price in Red
+                    fontSize = 14.sp,
+                    color = Color.Red,
                     textAlign = TextAlign.Center
                 )
             } else {
                 Text(
                     text = "${String.format("%.2f", amountToShow)} DT",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp, // Smaller font size
+                    fontSize = 14.sp,
                     color = Color(0xFF0054D8),
                     textAlign = TextAlign.Center
                 )
@@ -419,95 +397,60 @@ private fun EstablishmentCardContent(getBookingResponseDTO: GetBookingResponseDT
 }
 
 
-
-
 @Composable
 fun FailureState(errorMessage: String?, setErrorMessage: (String) -> Unit) {
     setErrorMessage(errorMessage ?: "An unexpected error occurred.")
 }
-
-
-
-
 fun handleCardClick(
     selectedBooking: GetBookingResponseDTO,
     planning: PlanningDTO,
     bookingViewModel: GetBookingViewModel,
     navController: NavController,
-    isUserLoggedIn: Boolean,
-    onLoginRequired: () -> Unit,
     saveBookingViewModel: SaveBookingViewModel,
     viewModel1: ExtrasViewModel,
     onReservationSelected: (ReservationOption) -> Unit,
     paymentPayAvoirViewModel: PaymentPayAvoirViewModel,
     amountToShow: BigDecimal,
-    context: Context // Add Context as a parameter
-
+    context: Context,
+    selectedDate: LocalDate,
+    isUserLoggedIn: Boolean,
+    sessionmanager: SessionManager
 ) {
-
-
-    // val amountSelected = selectedBooking.amount ?: BigDecimal.ZERO
-
-    val currencySymbol = selectedBooking.currencySymbol ?: "€"
-    val formattedAmount = String.format("%.2f", amountToShow)
-    val price = " $formattedAmount"
-
     val establishmentName = selectedBooking.establishmentDTO?.name ?: "Unknown"
     val selectedTimeSlot = "${planning.fromStr} - ${planning.toStr}"
-
-
-
     val updatedBooking = selectedBooking.copy(plannings = listOf(planning))
+    val encodedDate = Uri.encode(selectedDate.toString())
+    val mappedBookingsJson = Uri.encode(Gson().toJson(listOf(updatedBooking).toDomain()))
+    val reservationOption = ReservationOption(
+        name = establishmentName,
+        time = selectedTimeSlot,
+        price = amountToShow.toString(),
+        mappedBookings = mappedBookingsJson
+    )
+    val destinationUrl = "payment_section1/${Uri.encode(reservationOption.name)}/" +
+            "${Uri.encode(reservationOption.time)}/" +
+            "${Uri.encode(reservationOption.price)}/" +
+            "$mappedBookingsJson/$encodedDate"
 
-    bookingViewModel.updateBookings(listOf(updatedBooking))
-    Log.d("BookingViewModel", "updateBookings called with selected booking")
-
-
-    if (!isUserLoggedIn) {
-
-        onLoginRequired()
-    } else {
-        // Proceed with the booking process
-        val mappedBookings = listOf(updatedBooking).toDomain().joinToString(separator = ", ") {
-            it.toString()
-        }
-
-
-        val reservationOption = ReservationOption(
-            name = establishmentName,
-            time = selectedTimeSlot,
-            //date = "hello",
-            price = amountToShow.toString(),
-            mappedBookings = mappedBookings
-        )
-
-
-        val mappedBookingsJson = Uri.encode(Gson().toJson(listOf(updatedBooking).toDomain()))
-
-        Log.d("HandleCardClick", "ReservationOption: $reservationOption")
-
+    if (!sessionmanager.isLoggedIn()) {
         onReservationSelected(reservationOption)
-
-        try {
-            val sanitizedPrice = price.trim().replace(",", "")
-            val amount = BigDecimal(sanitizedPrice)
-
-        } catch (e: NumberFormatException) {
-            Toast.makeText(
-                navController.context,
-                "Invalid price format. Please try again.",
-                Toast.LENGTH_LONG
-            ).show()
-            return
+        val loginDestination = "login_screen?redirectUrl=${Uri.encode(destinationUrl)}"
+        navController.navigate(loginDestination) {
+            popUpTo("main_screen") { inclusive = false }
         }
-
-
-        navController.navigate(
-            "payment_section1/${Uri.encode(reservationOption.name)}/${Uri.encode(reservationOption.time)}/${Uri.encode(reservationOption.price)}/$mappedBookingsJson"
-        )
-
+    } else {
+        navController.navigate(destinationUrl) {
+            popUpTo("main_screen") { inclusive = false }
+        }
     }
 }
+
+
+
+
+
+
+
 
 
 

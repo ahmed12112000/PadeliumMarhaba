@@ -5,17 +5,14 @@ import com.padelium.domain.dto.GetReservationResponse
 import javax.inject.Inject
 
 class GetReservationMapper @Inject constructor() {
-
-    fun mapGetReservationResponseDTOToGetReservationResponse(
-        getReservationList: List<GetReservationResponseDTO>
-    ): List<GetReservationResponse> {
+    fun mapGetReservationResponseDTOToGetReservationResponse(getReservationList: List<GetReservationResponseDTO>): List<GetReservationResponse> {
         return getReservationList.map { response ->
             GetReservationResponse(
-                id = response.id ?: 0, // Default to 0 if id is null
-                from = response.from?.toString() ?: "", // Converting Instant to String or default empty string
+                id = response.id ?: 0,
+                from = response.from?.toString() ?: "",
                 to = response.to?.toString() ?: "",
                 annulationDate = response.annulationDate?.toString() ?: "",
-                sellAmount = response.sellAmount?.toDouble() ?: 0.0, // BigDecimal to Double
+                sellAmount = response.sellAmount?.toDouble() ?: 0.0,
                 purchaseAmount = response.purchaseAmount?.toDouble() ?: 0.0,
                 numberOfPlayer = response.numberOfPlayer ?: 0,
                 reference = response.reference ?: "",

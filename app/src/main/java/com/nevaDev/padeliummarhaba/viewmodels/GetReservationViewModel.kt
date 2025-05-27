@@ -1,12 +1,9 @@
 package com.nevaDev.padeliummarhaba.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-//import com.nevaDev.padeliummarhaba.ui.views.Reservation
-import com.padelium.domain.dataresult.DataResult
 import com.padelium.domain.dataresult.DataResultBooking
 import com.padelium.domain.dto.GetReservationResponse
 import com.padelium.domain.repositories.IGetReservationRepository
@@ -17,7 +14,8 @@ import javax.inject.Inject
 
 
 @HiltViewModel
-class GetReservationViewModel @Inject constructor(private val repository: IGetReservationRepository) : ViewModel() {
+open class GetReservationViewModel @Inject constructor(private val repository: IGetReservationRepository) : ViewModel()
+{
 
     private val _ReservationsData =
         MutableLiveData<DataResultBooking<List<GetReservationResponse>>>()
@@ -29,7 +27,6 @@ class GetReservationViewModel @Inject constructor(private val repository: IGetRe
         viewModelScope.launch {
             try {
                 val response = repository.GetReservation()
-                Log.d("GetReservation", "Fetched Reservations: $response")
 
                 if (response.isNotEmpty()) {
                     _ReservationsData.postValue(DataResultBooking.Success(response))
@@ -50,7 +47,6 @@ class GetReservationViewModel @Inject constructor(private val repository: IGetRe
                         errorMessage = "Exception occurred: ${e.message}"
                     )
                 )
-                Log.e("GetReservation", "Error fetching reservations", e)
             }
         }
     }

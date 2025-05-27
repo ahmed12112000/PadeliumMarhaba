@@ -11,26 +11,20 @@ class SearchListUseCase @Inject constructor(private val searchListRepository: IS
 
     suspend fun  execute(key: String): DataResultBooking<List<SearchListResponse>> {
         return try {
-            // Fetching the initialization data using the repository
             val response = searchListRepository.searchlist(key)
 
-            // Checking if the response is successful
             if (response.isSuccessful) {
                 val searchListResponse = response.body()
                 if (searchListResponse != null) {
-                    // Return a Success result with the fetched response body
                     DataResultBooking.Success(searchListResponse)
                 } else {
-                    // If the response body is null, return Failure
                     DataResultBooking.Failure(null, response.code(), "Empty response body")
                 }
             } else {
-                // If the response is not successful, return Failure with an error message
                 val errorMessage = response.errorBody()?.string() ?: "Unknown error occurred"
                 DataResultBooking.Failure(null, response.code(), errorMessage)
             }
         } catch (e: Exception) {
-            // If an exception occurs, return Failure with the exception details
             DataResultBooking.Failure(e, null, e.localizedMessage ?: "An error occurred during the GetInit request")
         }
     }

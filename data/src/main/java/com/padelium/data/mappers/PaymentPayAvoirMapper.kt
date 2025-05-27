@@ -10,9 +10,6 @@ class PaymentPayAvoirMapper @Inject constructor(){
     fun PaymentPayAvoirRequestToPaymentPayAvoirRequestDTO (userAvoirPayRequest: UserAvoirPayRequest): UserAvoirPayRequestDTO {
         return UserAvoirPayRequestDTO(
             amount = userAvoirPayRequest.amount,
-
-
-
  )
     }
     }

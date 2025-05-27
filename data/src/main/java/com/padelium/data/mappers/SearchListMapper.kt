@@ -6,11 +6,7 @@ import javax.inject.Inject
 
 class SearchListMapper @Inject constructor() {
 
-    fun SearchListResponseToSearchListResponseDto(searchListResponse: List<SearchListResponse>): List<SearchListResponseDTO> {
-
-        return searchListResponse.map { response ->
-
-            // Ensure plannings is not null by providing a default empty list
+    fun SearchListResponseToSearchListResponseDto(searchListResponse: List<SearchListResponse>): List<SearchListResponseDTO> { return searchListResponse.map { response ->
             SearchListResponseDTO(
                 id = response.id,
                 name = response.name?: "",
@@ -36,8 +32,6 @@ class SearchListMapper @Inject constructor() {
                 reductionAmount = response.reductionAmount,
                 reductionSecondAmount = response.reductionSecondAmount,
                 establishmentPictureDTO = response.establishmentPictureDTO?: emptyList(),
-
-
                 logo = response.logo?: "",
                 key = response.key?: "",
                 timeSpan = response.timeSpan,
@@ -47,9 +41,7 @@ class SearchListMapper @Inject constructor() {
                 fromStr = response.fromStr?: "",
                 toStr = response.toStr?: "",
                 plannings = response.plannings ?: emptyList(),
-
                 )
-        }
-    }
+        } }
 }
 

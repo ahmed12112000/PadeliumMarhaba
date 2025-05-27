@@ -8,10 +8,7 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 
-
 class KeyMapper @Inject constructor(){
-
-
     fun FetchKeyResponseToFetchKeyResponseDTO(fetchKeyRequest: FetchKeyRequest): FetchKeyRequestDTO {
 
         val formattedDateTime = fetchKeyRequest.dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))

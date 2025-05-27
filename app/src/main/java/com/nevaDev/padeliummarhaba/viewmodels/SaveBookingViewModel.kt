@@ -1,6 +1,5 @@
 package com.nevaDev.padeliummarhaba.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -38,9 +37,8 @@ class SaveBookingViewModel @Inject constructor(
                     val saveBookingResponse = result.data as? SaveBookingResponse
                     saveBookingResponse?.let {
                         bookingIds = it.id
-                        _bookingId.value = bookingIds // Update LiveData with bookingId
+                        _bookingId.value = bookingIds
                     }
-                    Log.d("PaymentViewModel", "Payment method called with orderId: $bookingIds")
 
                 }
             } catch (e: Exception) {

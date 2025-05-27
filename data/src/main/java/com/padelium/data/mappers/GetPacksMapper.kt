@@ -6,7 +6,6 @@ import javax.inject.Inject
 
 
 class GetPacksMapper @Inject constructor() {
-
     fun GetPacksResponseToGetPacksResponseDTO(getPacksResponseList: List<GetPacksResponseDTO>): List<GetPacksResponse> {
         return getPacksResponseList.map { response ->
             GetPacksResponse(

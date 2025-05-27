@@ -14,21 +14,17 @@ class SaveBookingUseCase @Inject constructor(
 
     suspend fun SaveBooking(getBookingResponses: List<GetBookingResponse>): DataResult {
         return try {
-            // Call the repository to save the booking
             val response = saveBookingRepository.SaveBooking(getBookingResponses)
 
             if (response.isSuccessful) {
                 val responseBody = response.body()
                 if (responseBody != null && responseBody.isNotEmpty()) {
-                    Log.d("SaveBookingUseCase", "SaveBooking successful: ${response.code()}")
-                    DataResult.Success(responseBody) // Return the list of SaveBookingResponse
+                    DataResult.Success(responseBody)
                 } else {
-                    Log.d("SaveBookingUseCase", "Empty response body")
-                    DataResult.Success(emptyList<SaveBookingResponse>()) // Return an empty success result
+                    DataResult.Success(emptyList<SaveBookingResponse>())
                 }
             } else {
                 val errorMessage = response.errorBody()?.string() ?: "Unknown error occurred"
-                Log.e("SaveBookingUseCase", "Error response: $errorMessage")
                 DataResult.Failure(
                     exception = null,
                     errorCode = response.code(),
@@ -36,7 +32,6 @@ class SaveBookingUseCase @Inject constructor(
                 )
             }
         } catch (ex: Exception) {
-            Log.e("SaveBookingUseCase", "Exception occurred during booking", ex)
             DataResult.Failure(
                 exception = ex,
                 errorCode = null,

@@ -8,17 +8,14 @@ import com.padelium.domain.repositories.IPaymentRepository
 import javax.inject.Inject
 
 class PaymentUseCase @Inject constructor(private val paymentRepository: IPaymentRepository) {
-
     suspend fun Payment(paymentRequest: PaymentRequest): DataResult {
         return try {
             val response = paymentRepository.Payment(paymentRequest)
             if (response.isSuccessful) {
                 val responseBody = response.body()
                 if (responseBody != null) {
-                    Log.d("PaymentUseCase", "Payment successful: ${response.code()}")
                     DataResult.Success(responseBody)
                 } else {
-                    Log.d("PaymentUseCase", "Empty response body")
                     DataResult.Success(Unit)
                 }
             } else {
@@ -26,25 +23,20 @@ class PaymentUseCase @Inject constructor(private val paymentRepository: IPayment
                 DataResult.Failure(null, response.code(), errorMessage)
             }
         } catch (ex: Exception) {
-            Log.e("PaymentUseCase", "Exception occurred during payment", ex)
             DataResult.Failure(ex, null, ex.localizedMessage ?: "An error occurred during payment")
         }
     }
 }
 
-
 class PaymentPartUseCase @Inject constructor(private val paymentRepository: IPaymentPartRepository) {
-
     suspend fun PaymentPart(paymentRequest: PaymentRequest): DataResult {
         return try {
             val response = paymentRepository.PaymentPart(paymentRequest)
             if (response.isSuccessful) {
                 val responseBody = response.body()
                 if (responseBody != null) {
-                    Log.d("PaymentUseCase", "Payment successful: ${response.code()}")
                     DataResult.Success(responseBody)
                 } else {
-                    Log.d("PaymentUseCase", "Empty response body")
                     DataResult.Success(Unit)
                 }
             } else {
@@ -52,10 +44,7 @@ class PaymentPartUseCase @Inject constructor(private val paymentRepository: IPay
                 DataResult.Failure(null, response.code(), errorMessage)
             }
         } catch (ex: Exception) {
-            Log.e("PaymentUseCase", "Exception occurred during payment", ex)
             DataResult.Failure(ex, null, ex.localizedMessage ?: "An error occurred during payment")
         }
     }
-
-
 }
