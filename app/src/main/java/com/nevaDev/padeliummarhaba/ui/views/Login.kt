@@ -254,7 +254,6 @@ fun LoginScreen(
                     value = password,
                     onValueChange = {
                         password = it.trim()
-                        isPasswordError = password.length < 8
                     },
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(
@@ -318,9 +317,8 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(26.dp))
                 val isEmailValid = email.matches(emailPattern)
-                val isPasswordValid = password.length >= 8
                 val isButtonEnabled =
-                    isEmailValid && isPasswordValid && email.isNotBlank() && password.isNotBlank()
+                    isEmailValid  && email.isNotBlank() && password.isNotBlank()
 
                 Button(
                     onClick = {

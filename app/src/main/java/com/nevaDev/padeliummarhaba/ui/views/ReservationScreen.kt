@@ -56,6 +56,7 @@ import com.padelium.domain.dataresult.DataResult
 import com.padelium.domain.dto.InitBookingRequest
 import kotlinx.coroutines.Job
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Calendar
@@ -567,7 +568,6 @@ fun DatePickerModal(
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomDatePickerModal(
@@ -589,7 +589,11 @@ fun CustomDatePickerModal(
     calendar.set(Calendar.MONTH, currentMonth)
     calendar.set(Calendar.YEAR, currentYear)
     calendar.set(Calendar.DAY_OF_MONTH, 1)
-    val startDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+
+    // Fix: Convert US day of week (1=Sunday) to European (1=Monday)
+    val startDayOfWeekUS = calendar.get(Calendar.DAY_OF_WEEK)
+    val startDayOfWeekEU = if (startDayOfWeekUS == Calendar.SUNDAY) 7 else (startDayOfWeekUS - 1)
+
     val totalDaysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
     val frenchMonths =
         listOf("Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc")
@@ -671,7 +675,8 @@ fun CustomDatePickerModal(
                     columns = GridCells.Fixed(7),
                     modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
-                    items(startDayOfWeek - 1) {
+                    // Fix: Use the converted European day of week
+                    items(startDayOfWeekEU - 1) {
                         Box(modifier = Modifier.size(40.dp))
                     }
 
@@ -850,7 +855,13 @@ fun DaySelectorWithArrows(
         if (showCalendarDialog) {
             CustomDatePickerModal(
                 onDateSelected = { millis ->
-                    millis?.let { onDateSelected(LocalDate.ofEpochDay(it / 86400000)) }
+                    millis?.let {
+                        val selectedDate = Instant.ofEpochMilli(it)
+                            .atZone(ZoneId.of("Africa/Tunis"))
+                            .toLocalDate()
+                        onDateSelected(selectedDate)
+                    }
+
                     showCalendarDialog = false
                 },
                 onDismiss = { showCalendarDialog = false }

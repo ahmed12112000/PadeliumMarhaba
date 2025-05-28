@@ -24,4 +24,17 @@ data class GetBookingResponse(
     val establishmentPacksDTO: List<EstablishmentPacksDTO?>,
     val currencyId: Long?,
 
+    val reductionSecondAmount: BigDecimal?,
+    val reductionaSecondAmount: BigDecimal?,
+    val rsamountfeeTrans: BigDecimal?,
+    val samountfeeTrans: BigDecimal?,
+    val secondAamount: BigDecimal?,
+    val withSecondPrice: Boolean?,
+
+    val secondAmount: BigDecimal?,
+    val secondReduction: BigDecimal?,
+
+
+
+
     )

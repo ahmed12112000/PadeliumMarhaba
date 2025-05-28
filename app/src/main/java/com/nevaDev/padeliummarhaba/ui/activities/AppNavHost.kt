@@ -462,16 +462,28 @@ fun AppNavHost(
             }
 
 
-            composable(route = "popup_partner_credit/{partnerPayId}/{totalPrice}", arguments = listOf(
+            composable(route = "popup_partner_credit/{partnerPayId}/{totalPrice}/{selectedExtras}", arguments = listOf(
                     navArgument("partnerPayId") { type = NavType.StringType },
-                    navArgument("totalPrice") { type = NavType.StringType }
+                    navArgument("totalPrice") { type = NavType.StringType },
+                navArgument("selectedExtras") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
                 )
             ) { backStackEntry ->
             var showPopup by remember { mutableStateOf(true) }
                 val partnerPayId = backStackEntry.arguments?.getString("partnerPayId")
                 val totalPriceString = backStackEntry.arguments?.getString("totalPrice").orEmpty()
                 var totalPrice = totalPriceString.toBigDecimalOrNull() ?: BigDecimal.ZERO
+                val selectedExtrasString = backStackEntry.arguments?.getString("selectedExtras").orEmpty()
 
+                val selectedExtras = if (selectedExtrasString.isNotEmpty()) {
+                    // Deserialize your selectedExtras here
+                    // For example, if you're using JSON: Gson().fromJson(selectedExtrasString, type)
+                    emptyList<Quadruple<String, String, Int, Long>>() // Replace with actual deserialization
+                } else {
+                    emptyList()
+                }
                 if (showPopup) {
                     PopupCreditPartner(
 
@@ -482,6 +494,7 @@ fun AppNavHost(
                         viewModel = hiltViewModel(),
                         partnerPayId = partnerPayId,
                         totalPrice = totalPrice,
+                        selectedExtras = selectedExtras
 
                     )
                 }

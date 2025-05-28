@@ -147,6 +147,9 @@ fun List<GetBookingResponseDTO>.toDomain(): List<GetBookingResponse> {
             }
         } ?: "0"
 
+        val hasHappyHours = dto.plannings?.any { it.isHappyHours } ?: false
+
+
         GetBookingResponse(
             aamount = BigDecimal(formattedAamount),
             amount = BigDecimal(formattedAmount),
@@ -166,6 +169,17 @@ fun List<GetBookingResponseDTO>.toDomain(): List<GetBookingResponse> {
             start = startFormatted,
             userIds = dto.userIds ,
             establishmentPacksDTO = dto.establishmentPacksDTO ?: emptyList(),
+
+
+            reductionSecondAmount = dto.reductionSecondAmount ?: BigDecimal.ZERO,   // THIS IS THE AMOUNT FOR Happy HOUR  withSecondPrice
+            reductionaSecondAmount = dto.reductionaSecondAmount ?: BigDecimal.ZERO,
+            rsamountfeeTrans = dto.rsamountfeeTrans ?: BigDecimal.ZERO,
+            samountfeeTrans = dto.samountfeeTrans ?: BigDecimal.ZERO,
+            secondAamount = dto.secondAamount ?: BigDecimal.ZERO,
+            withSecondPrice = hasHappyHours, // Set to true if any planning has isHappyHours = true
+            secondReduction = dto.secondReduction ?: BigDecimal.ZERO,
+            secondAmount = dto.secondAmount ?: BigDecimal.ZERO,
+
 
             )
     }
@@ -636,6 +650,15 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                     val playerIds = selectedPlayers.toList()
 
 
+                                    val formattesecondAamount = selectedBooking.secondAamount?.stripTrailingZeros()?.toPlainString()?.let {
+                                        if (it.contains(".")) it else it.toInt().toString()
+                                    } ?: "0"
+
+                                    val formattereductionSecondAmount = selectedBooking.reductionSecondAmount?.stripTrailingZeros()?.toPlainString()?.let {
+                                        if (it.contains(".")) it else it.toInt().toString()
+                                    } ?: "0"
+
+                                    val formatedwithSecondPrice = selectedBooking.withSecondPrice
 
                                     val updatedMappedBookings = mappedBookings.mapIndexed { index, booking ->
 
@@ -653,6 +676,10 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                                 amount = BigDecimal(formattedAmount),
                                                 aamount = BigDecimal(formattedAamount),
 
+
+                                                reductionSecondAmount = formattereductionSecondAmount.toBigDecimal(),
+                                                secondAamount = BigDecimal(formattesecondAamount),
+                                                withSecondPrice = formatedwithSecondPrice,
                                             )
                                         } else {
                                             booking
@@ -680,7 +707,7 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
 
                                                     if (bookingId == null || bookingId == "0") {
 
-                                                        errorMessage = "Cette réservation n'est pas disponible pour le moment. Veuillez réessayer plus tard."
+                                                      //  errorMessage = "Cette réservation n'est pas disponible pour le moment. Veuillez réessayer plus tard."
                                                         return@observe
                                                     }
 
@@ -792,6 +819,17 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                 var hasFetchedSelectedParts by remember { mutableStateOf(false) }
                 var hasFetchedBooking by remember { mutableStateOf(false) }
                 var hasFetchedPaymentPayAvoir by remember { mutableStateOf(false) }
+                // Add these state variables
+                var isPaymentInProgress by remember { mutableStateOf(false) }
+                var shouldShowErrorMessage by remember { mutableStateOf(true) }
+                var paymentSuccessful by remember { mutableStateOf(false) }
+
+                var isPaymentFlow by remember { mutableStateOf(false) }
+                var hasCompletedPayment by remember { mutableStateOf(false) }
+
+// Add a LaunchedEffect to handle navigation after payment
+
+
                 LaunchedEffect(showPopup) {
                     if (!showPopup) {
                         delay(300)
@@ -861,6 +899,20 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                         return@collectLatest
                                     }
 
+
+
+
+
+
+
+                                    val formattesecondAamount = selectedBooking.secondAamount?.stripTrailingZeros()?.toPlainString()?.let {
+                                        if (it.contains(".")) it else it.toInt().toString()
+                                    } ?: "0"
+
+                                    val formattereductionSecondAmount = selectedBooking.reductionSecondAmount?.stripTrailingZeros()?.toPlainString()?.let {
+                                        if (it.contains(".")) it else it.toInt().toString()
+                                    } ?: "0"
+
                                     val formattedAmount = selectedBooking.amount?.stripTrailingZeros()?.toPlainString()?.let {
                                         if (it.contains(".")) it else it.toInt().toString()
                                     } ?: "0"
@@ -868,6 +920,8 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                     val formattedAamount = selectedBooking.aamount?.stripTrailingZeros()?.toPlainString()?.let {
                                         if (it.contains(".")) it else it.toInt().toString()
                                     } ?: "0"
+
+                                    val formatedwithSecondPrice = selectedBooking.withSecondPrice
 
                                     val playerIds = selectedPlayers.toList()
                                     val totalAmountBigDecimal = BigDecimal.valueOf(totalAmountSelected).setScale(0, RoundingMode.DOWN)
@@ -903,8 +957,12 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                                             privateExtrasIds = privateExtras,
                                                             amount = BigDecimal(formattedAmount),
                                                             aamount = BigDecimal(formattedAamount),
-                                                            establishmentPacksDTO = emptyList()
-                                                        )
+                                                            establishmentPacksDTO = emptyList(),
+                                                            reductionSecondAmount = formattereductionSecondAmount.toBigDecimal(),
+                                                            secondAamount = BigDecimal(formattesecondAamount),
+                                                            withSecondPrice = formatedwithSecondPrice,
+
+                                                            )
                                                     } else {
                                                         booking
                                                     }
@@ -924,32 +982,40 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                     }
 
                                     // Observe SaveBooking Result
+                                    // Modified saveBookingViewModel observer
                                     saveBookingViewModel.dataResult.observe(lifecycleOwner) { result ->
                                         when (result) {
                                             is DataResult.Loading -> Log.d("SaveBooking", "Saving booking...")
                                             is DataResult.Success -> {
                                                 isLoading = false
-
                                                 val bookingList = result.data as? List<SaveBookingResponse>
                                                 if (!bookingList.isNullOrEmpty()) {
                                                     val firstBooking = bookingList[0]
                                                     bookingId = firstBooking.id.toString()
                                                 }
-
                                                 hasFetchedBooking = false
 
-                                                if (bookingId == null || bookingId == "0") {
-                                                    errorMessage = "Cette réservation n'est pas disponible pour le moment. Veuillez réessayer."
-                                                    showPopup = false
+                                                if (isPaymentFlow) {
+                                                    // We're in payment flow, navigate immediately without any other logic
+                                                    navController.navigate("successScreen")
+                                                    isPaymentFlow = false
                                                 } else {
-                                                    showPopup = true
+                                                    // Normal initial flow - only show error/popup logic for initial booking
+                                                    if (bookingId == null || bookingId == "0") {
+                                                        errorMessage = "Cette réservation n'est pas disponible pour le moment. Veuillez réessayer."
+                                                    } else {
+                                                        showPopup = true
+                                                    }
                                                 }
                                             }
                                             is DataResult.Failure -> {
                                                 isLoading = false
+                                                isPaymentFlow = false
+                                                hasCompletedPayment = false
                                             }
                                         }
                                     }
+
                                 }
                             }
                         }
@@ -981,13 +1047,18 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                         )
                     }
                 }
+// Add this LaunchedEffect to handle navigation
 
                 if (showPopup) {
                     PopupCredit(
                         onPayClick = {
                             showPopup = false
+                            isPaymentFlow = true // Mark that we're now in payment flow
                         },
-                        onCancelClick = { showPopup = false },
+                        onCancelClick = {
+                            showPopup = false
+                            isPaymentFlow = false
+                        },
                         viewModel = hiltViewModel(),
                         navController = navController,
                         errorCreditViewModel = hiltViewModel(),
@@ -995,7 +1066,12 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                         adjustedAmount = adjustedAmount,
                         totalExtrasCost = totalExtrasCost,
                         showPopup = showPopup,
-                        onDismiss = { showPopup = false },
+                        onDismiss = {
+                            showPopup = false
+                            if (!hasCompletedPayment) {
+                                isPaymentFlow = false
+                            }
+                        },
                         mappedBookingsJson = mappedBookingsJson,
                         viewModel9 = viewModel9,
                         findTermsViewModel = hiltViewModel(),

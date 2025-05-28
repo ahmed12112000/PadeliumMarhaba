@@ -191,13 +191,22 @@ data class HappyHourss (
 ): Serializable
 
 data class PlanningDTO(
-    val name: String,
+    //   feeTransaction  position    price    reductionPrice reductionPriceBol       rfeeTransaction     secondPrice
     val fromStr: String,
     val toStr: String,
     val from:String,
     val to: String,
     val available: Int,
     val reductionPrice: BigDecimal = BigDecimal.ZERO,
+    val isHappyHours : Boolean,
+    val feeTransaction: BigDecimal = BigDecimal.ZERO,
+    val position: Int,
+    val price: BigDecimal = BigDecimal.ZERO,
+    val rfeeTransaction: BigDecimal = BigDecimal.ZERO,
+    val secondPrice: Boolean,
+    val reductionPriceBol: Boolean ,
+
+
 ) : Serializable
 
 data class PlanningDTOo(
@@ -217,7 +226,7 @@ data class PlanningDTOo(
      val feeTransaction: BigDecimal = BigDecimal.ZERO,
      val rfeeTransaction: BigDecimal = BigDecimal.ZERO,
      val currencySymbol: String = "DT",
-     val reductionPriceBol: Boolean = false,
+     val reductionPriceBol: Boolean ,
      val secondPrice: Boolean = false,
      val isHappyHours: Boolean = false,
      val annulationDate: String = "",

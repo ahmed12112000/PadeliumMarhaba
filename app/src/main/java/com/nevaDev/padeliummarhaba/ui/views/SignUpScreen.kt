@@ -186,7 +186,7 @@ fun SignUpScreen(
                     .padding(end = 8.dp, top = 8.dp)
                     .offset(x = -22.dp, y = -8.dp)
                     .shadow(8.dp, RoundedCornerShape(15.dp), ambientColor = Color.Gray, spotColor = Color.Gray),
-                    keyboardOptions = KeyboardOptions.Default.copy(
+                keyboardOptions = KeyboardOptions.Default.copy(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next
                 ),
@@ -257,8 +257,8 @@ fun SignUpScreen(
             modifier = Modifier.fillMaxWidth().offset(y = -75.dp, x = -10.dp)
                 .shadow(4.dp, RoundedCornerShape(15.dp), ambientColor = Color.Gray, spotColor = Color.Gray),
             keyboardOptions = KeyboardOptions.Default.copy(
-            keyboardType = KeyboardType.Email,
-            imeAction = ImeAction.Next
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
             ),
             shape = RoundedCornerShape(15.dp),
             colors = TextFieldDefaults.outlinedTextFieldColors(
@@ -279,56 +279,77 @@ fun SignUpScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var isPasswordError by remember { mutableStateOf(false) }
 
-    OutlinedTextField(
-        value = password,
-        onValueChange = {
-            password = it.trim()
-            isPasswordError = password.length < 8
-        },
-        keyboardActions = KeyboardActions(
-            onDone = {
-                keyboardController?.hide()
-            }
-        ),
-        label = { Text(stringResource(R.string.password)) },
-        leadingIcon = {
-            Icon(
-                painter = painterResource(id = R.drawable.password1),
-                contentDescription = "Password Icon",
-                modifier = Modifier.size(24.dp)
-            )
-        },
-        trailingIcon = {
-            val iconRes = if (passwordVisible) R.drawable.showpassword else R.drawable.hidepassword
-            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+    // Password validation function
+    fun validatePassword(password: String): Boolean {
+        return password.length >= 8 && password.any { it.isUpperCase() }
+    }
+
+    // Update password error state
+    isPasswordError = password.isNotEmpty() && !validatePassword(password)
+
+    Column {
+        OutlinedTextField(
+            value = password,
+            onValueChange = {
+                password = it.trim()
+            },
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    keyboardController?.hide()
+                }
+            ),
+            label = { Text(stringResource(R.string.password)) },
+            leadingIcon = {
                 Icon(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = if (passwordVisible) "Hide Password" else "Show Password",
+                    painter = painterResource(id = R.drawable.password1),
+                    contentDescription = "Password Icon",
                     modifier = Modifier.size(24.dp)
                 )
-            }
-        },
-        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 1.dp, end = 24.dp)
-            .offset(x = 5.dp, y = 355.dp)
-            .shadow(4.dp, RoundedCornerShape(15.dp), ambientColor = Color.Gray, spotColor = Color.Gray),
+            },
+            trailingIcon = {
+                val iconRes = if (passwordVisible) R.drawable.showpassword else R.drawable.hidepassword
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = if (passwordVisible) "Hide Password" else "Show Password",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            },
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 1.dp, end = 24.dp)
+                .offset(x = 5.dp, y = 355.dp)
+                .shadow(4.dp, RoundedCornerShape(15.dp), ambientColor = Color.Gray, spotColor = Color.Gray),
+            keyboardOptions = KeyboardOptions.Default.copy(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            shape = RoundedCornerShape(15.dp),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                backgroundColor = Color.White,
+                focusedBorderColor = if (isPasswordError) Color.Red else Color.Black,
+                unfocusedBorderColor = if (isPasswordError) Color.Red else Color.Gray,
+                focusedLabelColor = Color.Black,
+                unfocusedLabelColor = Color.Black,
+            ),
+            isError = isPasswordError
+        )
 
-        keyboardOptions = KeyboardOptions.Default.copy(
-            keyboardType = KeyboardType.Password,
-            imeAction = ImeAction.Done
-        ),
-        shape = RoundedCornerShape(15.dp),
-        colors = TextFieldDefaults.outlinedTextFieldColors(
-            backgroundColor = Color.White,
-            focusedBorderColor = Color.Black,
-            unfocusedBorderColor = Color.Gray,
-            focusedLabelColor = Color.Black,
-            unfocusedLabelColor = Color.Black,
-        ),
-        isError = isPasswordError
-    )
+        // Password validation message
+        if (isPasswordError) {
+            Text(
+                text = "Utilisez au moins 8 caractères et incluez une lettre majuscule.",
+                color = Color.Red,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 6.dp, top = 4.dp, end = 24.dp)
+                    .offset(x = 5.dp, y = 355.dp)
+            )
+        }
+    }
 
     Spacer(modifier = Modifier.height(2.dp))
 
@@ -338,7 +359,7 @@ fun SignUpScreen(
     Row(
         modifier = Modifier
             .padding(start = 1.dp, end = 24.dp)
-            .offset(x = 22.dp, y = 450.dp)
+            .offset(x = 22.dp, y = if (isPasswordError) 470.dp else 450.dp) // Adjust position based on error message
     ) {
         Checkbox(
             checked = checked,
@@ -391,14 +412,14 @@ fun SignUpScreen(
                 .weight(1f)
                 .padding(horizontal = 8.dp, vertical = 2.dp)
         )
-
-
     }
+
     val isEmailValid = email.matches(emailPattern)
-    val isPasswordValid = password.length >= 8
+    val isPasswordValid = validatePassword(password) // Use the new validation function
     val isFirstNameValid = firstName.isNotBlank()
     val isLastNameValid = lastName.isNotBlank()
     val isButtonEnabled = isEmailValid && isPasswordValid && isFirstNameValid && isLastNameValid
+
     Button(
         onClick = {
             if (firstName.isBlank() || lastName.isBlank() || email.isBlank() || password.isBlank()) {
@@ -415,7 +436,7 @@ fun SignUpScreen(
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp)
-            .offset(x = 10.dp, y = 520.dp)
+            .offset(x = 10.dp, y = if (isPasswordError) 540.dp else 520.dp) // Adjust position based on error message
             .padding(start = 27.dp, end = 60.dp),
         colors = ButtonDefaults.buttonColors(backgroundColor = Color.Blue),
         shape = RoundedCornerShape(24.dp)
@@ -436,7 +457,7 @@ fun SignUpScreen(
     }
     Spacer(modifier = Modifier.height(60.dp))
     Row (modifier = Modifier.fillMaxSize()
-        .offset(x = 120.dp, y = 600.dp))
+        .offset(x = 120.dp, y = if (isPasswordError) 620.dp else 600.dp))
     {
         Text(text = stringResource(R.string.logininbutoon), color = Color.Gray)
         Spacer(modifier = Modifier.width(6.dp))
@@ -460,7 +481,7 @@ fun SignUpScreen(
                 .size(110.dp)
                 .height(200.dp)
                 .padding(bottom = 36.dp)
-                .offset( y = 615 .dp)
+                .offset( y = if (isPasswordError) 635.dp else 615.dp)
         )
     }
 }

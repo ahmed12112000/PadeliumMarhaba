@@ -56,7 +56,7 @@ fun PaymentSuccessScreen(navController: NavController) {
                 modifier = Modifier.padding(8.dp)
             )
             Text(
-                text = "Votre paiement a été traité avec succès. Merci pour votre achat.",
+                text = "Votre paiement a été traité avec succès.",
                 style = MaterialTheme.typography.body1.copy(color = Color.Black),
                 modifier = Modifier.padding(8.dp),
                 textAlign = TextAlign.Center

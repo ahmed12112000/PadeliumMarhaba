@@ -65,20 +65,22 @@ fun PartnerPaymentScreen(
     var totalPrice by remember { mutableStateOf(BigDecimal.ZERO) }
     var isLoading by remember { mutableStateOf(false) }
     val partnerPayResponse by viewModel4.partnerPayResponse.observeAsState()
-    var selectedExtras by remember { mutableStateOf<List<Triple<String, String, Int>>>(emptyList()) }
+    var selectedExtras by remember { mutableStateOf<List<Quadruple<String, String, Int, Long>>>(emptyList()) }
     var totalExtrasCost by remember { mutableStateOf(0.0) }
     val privateList = remember { mutableStateOf<MutableList<Long>>(mutableListOf()) }
+
+    val scrollState = rememberScrollState()
+
 
     LaunchedEffect(partnerPayId) {
         partnerPayId?.let {
             viewModel4.partnerPay(it.toLong())
         }
     }
-    fun updateExtras(newExtras: List<Triple<String, String, Int>>, newTotalExtrasCost: Double) {
+    fun updateExtras(newExtras: List<Quadruple<String, String, Int, Long>>, newTotalExtrasCost: Double) {
         selectedExtras = newExtras
         totalExtrasCost = newTotalExtrasCost
     }
-
     fun handleTotalPriceCalculated(newTotalPrice: BigDecimal) {
         totalPrice = newTotalPrice
     }
@@ -87,6 +89,7 @@ fun PartnerPaymentScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+            .verticalScroll(scrollState) // Add vertical scroll here
             .background(Color.White),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -282,7 +285,7 @@ fun PartnerPaymentScreen(
                             partnerPayId = partnerPayId,
                             viewModel = viewModel,
                             totalPrice = totalPrice,
-
+                            selectedExtras = selectedExtras,
                         )
                     }
                 }
@@ -293,22 +296,22 @@ fun PartnerPaymentScreen(
 
 @Composable
 fun ExtrasSection2(
-    onExtrasUpdate: (List<Triple<String, String, Int>>, Double) -> Unit,
+    // Change the callback to include the extra ID (Long) as the fourth element
+    onExtrasUpdate: (List<Quadruple<String, String, Int, Long>>, Double) -> Unit,
     viewModel4: PrivateExtrasViewModel = hiltViewModel(),
     findTermsViewModel: FindTermsViewModel = hiltViewModel(),
     privateList: MutableState<MutableList<Long>>,
-
 ) {
     var additionalExtrasEnabled by remember { mutableStateOf(false) }
     val privateExtrasState by viewModel4.extrasState2.observeAsState()
-    var selectedExtras by remember { mutableStateOf<List<Triple<String, String, Int>>>(emptyList()) }
+    // Change to include the extra ID as fourth element
+    var selectedExtras by remember { mutableStateOf<List<Quadruple<String, String, Int, Long>>>(emptyList()) }
     val totalExtrasCost by remember { derivedStateOf { selectedExtras.sumOf { it.second.toDouble() } } }
-
+    Log.d("Ahmeeeeeeeed","$totalExtrasCost")
 
     LaunchedEffect(viewModel4) {
         viewModel4.PrivateExtras()
     }
-
 
     Row(
         modifier = Modifier.fillMaxWidth().offset(y = (-8).dp),
@@ -357,6 +360,7 @@ fun ExtrasSection2(
 
                     privateExtrasList?.forEach { privateExtra ->
                         val isPrivateExtraAdded = privateList.value.contains(privateExtra.id)
+                        Log.d("ExtrasSection2", "Added private extra ID: $privateExtra")
 
                         ExtraItemCard(
                             extra = privateExtra,
@@ -366,10 +370,12 @@ fun ExtrasSection2(
                                 findTermsViewModel.updatePrivateExtras(privateList.value)
                                 Log.d("ExtrasSection2", "Added private extra ID: ${privateExtra.id}, List: $privateList")
 
-                                selectedExtras += Triple(
+                                // Include the extra ID as the fourth element
+                                selectedExtras += Quadruple(
                                     privateExtra.name,
                                     privateExtra.amount.toString(),
-                                    privateExtra.currencyId.toInt()
+                                    privateExtra.currencyId.toInt(),
+                                    privateExtra.id // Add the extra ID here
                                 )
                                 onExtrasUpdate(selectedExtras, totalExtrasCost)
                             },
@@ -378,7 +384,7 @@ fun ExtrasSection2(
                                 findTermsViewModel.updatePrivateExtras(privateList.value)
                                 Log.d("ExtrasSection2", "Removed private extra ID: ${privateExtra.id}, List: $privateList")
 
-                                selectedExtras = selectedExtras.filterNot { it.first == privateExtra.name }
+                                selectedExtras = selectedExtras.filterNot { it.fourth == privateExtra.id }
                                 onExtrasUpdate(selectedExtras, totalExtrasCost)
                             }
                         )
@@ -394,10 +400,18 @@ fun ExtrasSection2(
     }
 }
 
+// You'll need to define Quadruple if it doesn't exist in your project
+data class Quadruple<out A, out B, out C, out D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+)
+
 @Composable
 fun ReservationSummary2(
     viewModel4: PartnerPayViewModel = hiltViewModel(),
-    selectedExtras: List<Triple<String, String, Int>>,
+    selectedExtras: List<Quadruple<String, String, Int, Long>>, // Now includes extra IDs
     totalExtrasCost: Double,
     onTotalPriceCalculated: (BigDecimal) -> Unit
 

@@ -32,6 +32,15 @@ class GetBookingMapper @Inject constructor() {
                 userIds = response.userIds ?: emptyList(),
                 privateExtrasIds = response.privateExtrasIds ?: emptyList(),
 
+                reductionSecondAmount = response.reductionSecondAmount ?: BigDecimal.ZERO,
+                reductionaSecondAmount = response.reductionaSecondAmount ?: BigDecimal.ZERO,
+                rsamountfeeTrans = response.rsamountfeeTrans ?: BigDecimal.ZERO,
+                samountfeeTrans = response.samountfeeTrans ?: BigDecimal.ZERO,
+                secondAamount = response.secondAamount ?: BigDecimal.ZERO,
+                withSecondPrice = response.withSecondPrice ,
+                secondReduction = response.secondReduction ,
+                secondAmount = response.secondAmount ,
+
             )
         }
     }

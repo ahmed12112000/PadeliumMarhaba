@@ -16,10 +16,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -383,7 +386,6 @@ fun ReservationDetailsCard(
     }
 }
 
-
 @Composable
 fun PartnerField(
     label: String,
@@ -403,87 +405,93 @@ fun PartnerField(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .clickable {
-                focusManager.clearFocus()
-                keyboardController?.hide()
-                showDropdown = false
-            }
+    // Update isFieldDisabled when isDisabled prop changes
+    LaunchedEffect(isDisabled) {
+        isFieldDisabled = isDisabled
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { newText ->
-                    if (isFieldDisabled) return@OutlinedTextField
+        OutlinedTextField(
+            value = value,
+            onValueChange = { newText ->
+                if (isFieldDisabled) return@OutlinedTextField
 
-                    val oldValue = value.trim()
-                    val isDeleting = newText.length < oldValue.length
+                val oldValue = value.trim()
+                val isDeleting = newText.length < oldValue.length
 
-                    if (isDeleting) {
-                        val playerToRemove = findTermsViewModel.getPlayerByFullName(oldValue)
-                        playerToRemove?.let { player ->
-                            selectedPlayers.remove(player.id)
-                        }
+                if (isDeleting) {
+                    val playerToRemove = findTermsViewModel.getPlayerByFullName(oldValue)
+                    playerToRemove?.let { player ->
+                        selectedPlayers.remove(player.id)
                     }
+                }
 
-                    if (newText.isNotEmpty()) {
-                        val playerData = findTermsViewModel.getPlayerByFullName(newText)
-                        playerData?.let { player ->
-                            if (!selectedPlayers.contains(player.id)) {
-                                selectedPlayers.add(player.id)
-                                onPlayerSelected(player.fullName, player.id)
-                                isFieldDisabled = true
-                            }
-                        }
-                    }
+                // Don't auto-select on text change - only on explicit click
+                onValueChange(newText)
+                showDropdown = newText.isNotEmpty() && !isFieldDisabled
 
-                    onValueChange(newText)
-                    showDropdown = newText.isNotEmpty()
+                if (newText.length >= 1) {
+                    val requestBody: RequestBody = newText.toRequestBody("text/plain".toMediaType())
+                    findTermsViewModel.findTerms(requestBody, limit = 9)
+                }
+            },
+            label = { Text(label) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(15.dp),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                focusedBorderColor = Color.Black,
+                unfocusedBorderColor = Color.Black
+            ),
+            keyboardOptions = KeyboardOptions.Default.copy(
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                    showDropdown = false
+                }
+            ),
+            enabled = !isFieldDisabled
+        )
 
-                    if (newText.length >= 1) {
-                        val requestBody: RequestBody = newText.toRequestBody("text/plain".toMediaType())
-                        findTermsViewModel.findTerms(requestBody, limit = 9)
-                    }
-                },
-                label = { Text(label) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(15.dp),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = Color.Black,
-                    unfocusedBorderColor = Color.Black
-                ),
-                keyboardOptions = KeyboardOptions.Default.copy(
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        keyboardController?.hide()
-                        showDropdown = false
-                    }
-                ),
-                enabled = !isFieldDisabled
-            )
-
-            if (showDropdown) {
+        // Dropdown for player suggestions
+        if (showDropdown && !isFieldDisabled) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 200.dp),
+                elevation = CardDefaults.cardElevation(8.dp),
+                colors = CardDefaults.cardColors(Color.White)
+            ) {
                 when (playersState) {
                     is DataResult.Loading -> {
-                        CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
 
                     is DataResult.Success -> {
                         if (playerFullNames.isEmpty()) {
-                            Text(text = "No results found", modifier = Modifier.padding(16.dp))
+                            Text(
+                                text = "No results found",
+                                modifier = Modifier.padding(16.dp)
+                            )
                         } else {
-                            playerFullNames.forEach { fullName ->
-                                Text(
-                                    text = fullName,
-                                    modifier = Modifier
-                                        .padding(8.dp)
-                                        .clickable {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                items(playerFullNames) { fullName ->
+                                    DropdownPlayerItem(
+                                        playerName = fullName,
+                                        onPlayerClick = {
                                             val selectedPlayerData = findTermsViewModel.getPlayerByFullName(fullName)
                                             selectedPlayerData?.let { player ->
                                                 val playerId = player.id
@@ -492,11 +500,14 @@ fun PartnerField(
                                                     onValueChange(player.fullName)
                                                     onPlayerSelected(player.fullName, playerId)
                                                     isFieldDisabled = true
+                                                    showDropdown = false
+                                                    focusManager.clearFocus()
+                                                    keyboardController?.hide()
                                                 }
                                             }
-                                            showDropdown = false
                                         }
-                                )
+                                    )
+                                }
                             }
                         }
                     }
@@ -517,36 +528,70 @@ fun PartnerField(
                     }
                 }
             }
+        }
 
-            selectedPlayerId?.let { id ->
-                val playerName = findTermsViewModel.getPlayerById(id)?.fullName ?: ""
-                if (playerName.isNotEmpty()) {
+        // Selected player display
+        selectedPlayerId?.let { id ->
+            val playerName = findTermsViewModel.getPlayerById(id)?.fullName ?: ""
+            if (playerName.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    colors = CardDefaults.cardColors(Color.LightGray.copy(alpha = 0.3f))
+                ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                    Text(
-                        text = playerName,
-                        modifier = Modifier.padding(top = 8.dp),
-                        style = MaterialTheme.typography.body2
-                    )
-                    IconButton(
-                        onClick = {
-                            selectedPlayers.remove(id)
-                            onValueChange("")
-                            isFieldDisabled = false
-                            onRemovePlayer()
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Remove Player"
+                        Text(
+                            text = playerName,
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.weight(1f)
                         )
-                    }
+                        IconButton(
+                            onClick = {
+                                selectedPlayers.remove(id)
+                                onValueChange("")
+                                isFieldDisabled = false
+                                onRemovePlayer()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove Player",
+                                tint = Color.Red
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DropdownPlayerItem(
+    playerName: String,
+    onPlayerClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onPlayerClick() }
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        color = Color.Transparent
+    ) {
+        Text(
+            text = playerName,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            style = MaterialTheme.typography.body1
+        )
     }
 }
 

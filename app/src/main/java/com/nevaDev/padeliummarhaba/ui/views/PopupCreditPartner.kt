@@ -1,6 +1,7 @@
 package com.nevaDev.padeliummarhaba.ui.views
 
 
+import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -71,9 +72,12 @@ fun PopupCreditPartner(
     viewModel2: PaymentParCreditViewModel = hiltViewModel(),
     viewModel: GetProfileViewModel = hiltViewModel(),
     totalPrice: BigDecimal,
+    selectedExtras: List<Quadruple<String, String, Int, Long>>, // Now includes extra IDs
 
 ) {
     val dataResult by viewModel2.dataResult.observeAsState()
+
+    Log.d("total pricessss","$selectedExtras")
 
     LaunchedEffect(partnerPayId) {
         partnerPayId?.let {
@@ -225,7 +229,7 @@ fun PopupCreditPartner(
                                 response?.let {
                                     val paymentParCreditRequest = PaymentParCreditRequest(
                                         id = partnerPayId?.toLongOrNull() ?:0L,
-                                        privateExtrasIds = privateList.value.map { it as Long? }
+                                        privateExtrasIds = selectedExtras.map { it.fourth }
                                     )
                                     viewModel2.PaymentParCredit(paymentParCreditRequest)
                                 }

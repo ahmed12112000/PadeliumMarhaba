@@ -60,6 +60,7 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Calendar
@@ -805,9 +806,12 @@ fun ReservationCard1(
     reservation1: GetReservationIDResponse,
     bookingStatusCode: String
 ) {
-    val bookingDate = reservation.bookingDate
-    val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy", Locale.FRANCE)
-    val date = LocalDate.parse(bookingDate, formatter)
+    val bookingDate = reservation.created
+
+    // Parse the ISO 8601 datetime string first
+    val dateTime = ZonedDateTime.parse(bookingDate)
+    val date = dateTime.toLocalDate()
+
     val formattedDate = date.format(DateTimeFormatter.ofPattern("EEEE d MMM yyyy", Locale.FRANCE))
     val formattedCreatedDate = date.format(DateTimeFormatter.ofPattern("EEEE d MMM yyyy", Locale.FRANCE))
 
@@ -1193,6 +1197,8 @@ fun CustomDatePickerModal1(
     calendar.set(Calendar.DAY_OF_MONTH, 1)
 
     val startDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+    val adjustedStartDay = if (startDayOfWeek == Calendar.SUNDAY) 6 else (startDayOfWeek - 2)
+
     val totalDaysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
     val frenchMonths = listOf("Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc")
 
@@ -1274,7 +1280,8 @@ fun CustomDatePickerModal1(
                     columns = GridCells.Fixed(7),
                     modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
-                    items(startDayOfWeek - 1) {
+                    // Fixed: Use adjustedStartDay instead of startDayOfWeek - 1
+                    items(adjustedStartDay) {
                         Box(modifier = Modifier.size(40.dp))
                     }
 
