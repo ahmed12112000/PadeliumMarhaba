@@ -107,6 +107,8 @@ fun PopupCredit(
     val type = object : TypeToken<List<GetBookingResponse>>() {}.type
     val selectedParts by viewModel9.selectedParts.collectAsState()
     var isLoading by remember { mutableStateOf(false) }
+    // NEW: Add a flag to track if payment is already being processed
+    var isPaymentProcessing by remember { mutableStateOf(false) }
     val paymentPayAvoirViewModel: PaymentPayAvoirViewModel = hiltViewModel()
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
     val paymentViewModel: PaymentViewModel = hiltViewModel()
@@ -119,7 +121,7 @@ fun PopupCredit(
     val balanceData by balanceViewModel.dataResult.observeAsState(DataResult.Loading)
     val totalAmountSelected = adjustedAmount + totalExtrasCost
     onTotalAmountCalculated(totalAmountSelected, "DT")
- Log.d("totalAmount","$totalAmountSelected")
+    Log.d("totalAmount","$totalAmountSelected")
     var elapsedTime by remember { mutableStateOf(0f) }
     val totalTime = 240f
     val timeLeft = (totalTime - elapsedTime).toInt()
@@ -157,10 +159,12 @@ fun PopupCredit(
         token = "",
         transactionId = 0L
     )
+
     LaunchedEffect(bookingId) {
         bookingId?.toLongOrNull()?.let { id ->
         }
     }
+
     LaunchedEffect(bookingId) {
         bookingId?.toLongOrNull()?.let { id ->
             viewModel.fetchProfileData()
@@ -203,7 +207,6 @@ fun PopupCredit(
         else -> Unit
     }
 
-
     Dialog(
         onDismissRequest = {
             if (creditErrorRequest != null) {
@@ -240,12 +243,10 @@ fun PopupCredit(
                     ) {
                         IconButton(
                             onClick = {
-                                onDismiss( )
-
+                                onDismiss()
                                 if (creditErrorRequest != null) {
                                     errorCreditViewModel.ErrorCredit(creditErrorRequest)
                                 }
-
                             }
                         ) {
                             Icon(
@@ -289,120 +290,133 @@ fun PopupCredit(
 
                     Button(
                         onClick = {
-                            if (isLoading) return@Button
+                            // FIXED: Prevent multiple clicks
+                            if (isLoading || isPaymentProcessing) return@Button
+
+                            // Set the processing flag immediately
+                            isPaymentProcessing = true
+                            isLoading = true
 
                             viewModel9.updateSelectedParts(selectedParts)
 
                             coroutineScope.launch {
-                                viewModel9.selectedParts.collectLatest { currentSelectedParts ->
-                                    val selectedBooking = mappedBookings.firstOrNull()
+                                try {
+                                    viewModel9.selectedParts.collectLatest { currentSelectedParts ->
+                                        val selectedBooking = mappedBookings.firstOrNull()
 
-                                    if (selectedBooking != null) {
+                                        if (selectedBooking != null) {
+                                            if (totalAmountSelected <= 0) {
+                                                isLoading = false
+                                                isPaymentProcessing = false
+                                                return@collectLatest
+                                            }
+                                            val orderIdValue = bookingId?.toLongOrNull()?.toString() ?: ""
 
-                                        if (totalAmountSelected <= 0) {
-                                            isLoading = false
-                                            return@collectLatest
-                                        }
-                                        val orderIdValue = bookingId?.toLongOrNull()?.toString() ?: ""
+                                            if (orderIdValue.isEmpty() || orderIdValue == "0") {
+                                                errorMessage = "Cette réservation n'est pas disponible pour le moment. Veuillez réessayer plus tard."
+                                                isLoading = false
+                                                isPaymentProcessing = false
+                                                return@collectLatest
+                                            }
 
-                                        if (orderIdValue.isEmpty() || orderIdValue == "0") {
-                                            errorMessage = "Cette réservation n'est pas disponible pour le moment. Veuillez réessayer plus tard."
-                                            isLoading = false
-                                            return@collectLatest
-                                        }
+                                            val playerIds = selectedPlayers.toList()
+                                            val totalAmountBigDecimal =
+                                                BigDecimal.valueOf(totalAmountSelected)
+                                                    .setScale(0, RoundingMode.DOWN)
+                                            val currency =
+                                                selectedReservation.price.takeWhile { !it.isDigit() && it != '.' }
+                                            onTotalAmountCalculated(
+                                                totalAmountBigDecimal.toInt().toDouble(), currency
+                                            )
 
-                                        val playerIds = selectedPlayers.toList()
-                                        val totalAmountBigDecimal =
-                                            BigDecimal.valueOf(totalAmountSelected)
-                                                .setScale(0, RoundingMode.DOWN)
-                                        val currency =
-                                            selectedReservation.price.takeWhile { !it.isDigit() && it != '.' }
-                                        onTotalAmountCalculated(
-                                            totalAmountBigDecimal.toInt().toDouble(), currency
-                                        )
+                                            paymentPayAvoirViewModel.PaymentPayAvoir(
+                                                totalAmountBigDecimal
+                                            )
 
-                                        paymentPayAvoirViewModel.PaymentPayAvoir(
-                                            totalAmountBigDecimal
-                                        )
+                                            paymentPayAvoirViewModel.dataResult.observe(lifecycleOwner) { paymentResult ->
+                                                when (paymentResult) {
+                                                    is DataResult.Loading -> {}
 
-                                        paymentPayAvoirViewModel.dataResult.observe(lifecycleOwner) { paymentResult ->
-                                            when (paymentResult) {
-                                                is DataResult.Loading -> {}
+                                                    is DataResult.Success -> {
+                                                        val payFromAvoirResponse = true
+                                                        balanceViewModel.fetchAndBalance()
+                                                        val paymentRequest = PaymentRequest(
+                                                            amount = totalAmountSelected.toString(),
+                                                            currency = "DT",
+                                                            orderId = bookingId?.toLongOrNull()
+                                                                ?.toString() ?: ""
+                                                        )
 
-                                                is DataResult.Success -> {
-                                                    isLoading = false
-                                                    val payFromAvoirResponse = true
-                                                    balanceViewModel.fetchAndBalance()
-                                                    val paymentRequest = PaymentRequest(
-                                                        amount = totalAmountSelected.toString(),
-                                                        currency =  "DT",
-                                                        orderId = bookingId?.toLongOrNull()
-                                                            ?.toString() ?: ""
-                                                    )
+                                                        paymentViewModel.Payment(paymentRequest)
 
-                                                    paymentViewModel.Payment(paymentRequest)
-
-                                                    paymentViewModel.dataResult.observe(
-                                                        lifecycleOwner
-                                                    ) { paymentResult ->
-                                                        when (paymentResult) {
-                                                            is DataResult.Success -> {
-                                                                isLoading = false
-
-                                                                val confirmBookingRequest =
-                                                                    ConfirmBookingRequest(
-                                                                        amount = totalAmountSelected.toBigDecimal(),
-                                                                        numberOfPart = currentSelectedParts,
-                                                                        payFromAvoir = payFromAvoirResponse,
-                                                                        privateExtrasIds = privateExtrass,
-                                                                        bookingIds = listOfNotNull(bookingId?.toLongOrNull()),
-                                                                        buyerId = "",
-                                                                        couponIds = emptyMap(),
-                                                                        sharedExtrasIds = sharedExtrass,
-                                                                        status = true,
-                                                                        token = "",
-                                                                        transactionId = "",
-                                                                        userIds = playerIds
+                                                        paymentViewModel.dataResult.observe(
+                                                            lifecycleOwner
+                                                        ) { paymentResult ->
+                                                            when (paymentResult) {
+                                                                is DataResult.Success -> {
+                                                                    val confirmBookingRequest =
+                                                                        ConfirmBookingRequest(
+                                                                            amount = totalAmountSelected.toBigDecimal(),
+                                                                            numberOfPart = currentSelectedParts,
+                                                                            payFromAvoir = payFromAvoirResponse,
+                                                                            privateExtrasIds = privateExtrass,
+                                                                            bookingIds = listOfNotNull(bookingId?.toLongOrNull()),
+                                                                            buyerId = "",
+                                                                            couponIds = emptyMap(),
+                                                                            sharedExtrasIds = sharedExtrass,
+                                                                            status = true,
+                                                                            token = "",
+                                                                            transactionId = "",
+                                                                            userIds = playerIds
+                                                                        )
+                                                                    confirmBookingViewModel.GetPayment(
+                                                                        confirmBookingRequest
                                                                     )
-                                                                confirmBookingViewModel.GetPayment(
-                                                                    confirmBookingRequest
-                                                                )
 
-                                                                confirmBookingViewModel.dataResult.observe(
-                                                                    lifecycleOwner
-                                                                ) { confirmResult ->
-                                                                    when (confirmResult) {
-                                                                        is DataResult.Success -> {
-                                                                            isLoading = false
-                                                                            navController.navigate("PaymentSuccessScreen")
-                                                                        }
+                                                                    confirmBookingViewModel.dataResult.observe(
+                                                                        lifecycleOwner
+                                                                    ) { confirmResult ->
+                                                                        when (confirmResult) {
+                                                                            is DataResult.Success -> {
+                                                                                isLoading = false
+                                                                                isPaymentProcessing = false
+                                                                                navController.navigate("PaymentSuccessScreen")
+                                                                            }
 
-                                                                        is DataResult.Failure -> {
-                                                                            isLoading = false
-                                                                        }
+                                                                            is DataResult.Failure -> {
+                                                                                isLoading = false
+                                                                                isPaymentProcessing = false
+                                                                            }
 
-                                                                        is DataResult.Loading -> {
+                                                                            is DataResult.Loading -> {
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
-                                                            }
 
-                                                            is DataResult.Failure -> {
-                                                                isLoading = false
-                                                            }
+                                                                is DataResult.Failure -> {
+                                                                    isLoading = false
+                                                                    isPaymentProcessing = false
+                                                                }
 
-                                                            is DataResult.Loading -> {
+                                                                is DataResult.Loading -> {
+                                                                }
                                                             }
                                                         }
                                                     }
-                                                }
 
-                                                is DataResult.Failure -> {
-                                                    isLoading = false
+                                                    is DataResult.Failure -> {
+                                                        isLoading = false
+                                                        isPaymentProcessing = false
+                                                    }
                                                 }
                                             }
                                         }
                                     }
+                                } catch (e: Exception) {
+                                    // Reset flags in case of any exception
+                                    isLoading = false
+                                    isPaymentProcessing = false
                                 }
                             }
                         },
@@ -411,10 +425,27 @@ fun PopupCredit(
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0054D8)),
                         shape = RoundedCornerShape(8.dp),
-                        enabled = totalAmountSelected <= balance.toDouble()
+                        // FIXED: Disable button when processing OR when insufficient balance
+                        enabled = !isPaymentProcessing && !isLoading && totalAmountSelected <= balance.toDouble()
                     ) {
-                        Text(text = "Payer:  $totalAmountSelected Crédits", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        // FIXED: Show different text when processing
+                        if (isPaymentProcessing || isLoading) {
+                            Text(
+                                text = "Traitement en cours...",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        } else {
+                            Text(
+                                text = "Payer: $totalAmountSelected Crédits",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
                     }
+
                     if (errorMessage != null) {
                         Text(
                             text = errorMessage!!,
@@ -431,11 +462,13 @@ fun PopupCredit(
                             }
                             onDismiss()
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        // FIXED: Also disable cancel button when processing to prevent confusion
+                        enabled = !isPaymentProcessing
                     ) {
                         Text(
                             text = "Annuler et retourner à la page de recherche",
-                            color = Color(0xFF0054D8),
+                            color = if (isPaymentProcessing) Color.Gray else Color(0xFF0054D8),
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
                         )

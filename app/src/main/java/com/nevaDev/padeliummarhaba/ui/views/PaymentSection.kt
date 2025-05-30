@@ -851,7 +851,9 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                 val selectedBooking = mappedBookings.firstOrNull()
                                 if (selectedBooking != null) {
                                     val searchDate = selectedDate
+
                                     val totalAmountSelected = adjustedAmount + totalExtrasCost
+                                    Log.d("RservationAmount, Extra Amount","$adjustedAmount $totalExtrasCost")
                                     val firstPlanning = selectedBooking.plannings?.firstOrNull()
 
                                     val startFormatted = firstPlanning?.fromStr?.let { timeStr ->
@@ -925,6 +927,7 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
 
                                     val playerIds = selectedPlayers.toList()
                                     val totalAmountBigDecimal = BigDecimal.valueOf(totalAmountSelected).setScale(0, RoundingMode.DOWN)
+
                                     val currency = selectedReservation.price.takeWhile { !it.isDigit() && it != '.' }
 
                                     onTotalAmountCalculated(totalAmountBigDecimal.toInt().toDouble(), currency)

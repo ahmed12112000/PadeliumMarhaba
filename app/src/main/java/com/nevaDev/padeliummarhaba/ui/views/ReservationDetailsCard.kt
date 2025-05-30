@@ -595,7 +595,6 @@ private fun DropdownPlayerItem(
     }
 }
 
-
 @Composable
 fun ExtrasSection(
     onExtrasUpdate: (List<Triple<String, String, Int>>, Double) -> Unit,
@@ -615,6 +614,7 @@ fun ExtrasSection(
         viewModel3.SharedExtras()
         viewModel4.PrivateExtras()
     }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -627,11 +627,29 @@ fun ExtrasSection(
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f)
-
         )
         Switch(
             checked = additionalExtrasEnabled,
-            onCheckedChange = { additionalExtrasEnabled = it },
+            onCheckedChange = { isEnabled ->
+                additionalExtrasEnabled = isEnabled
+
+                // Clear all selected extras when switch is turned off
+                if (!isEnabled) {
+                    // Clear the lists
+                    sharedList.value.clear()
+                    privateList.value.clear()
+
+                    // Update ViewModels with empty lists
+                    findTermsViewModel.updateSharedExtras(sharedList.value)
+                    findTermsViewModel.updatePrivateExtras(privateList.value)
+
+                    // Clear selected extras
+                    selectedExtras = emptyList()
+
+                    // Update parent with empty list and zero cost
+                    onExtrasUpdate(emptyList(), 0.0)
+                }
+            },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color(0xFF0054D8),
                 uncheckedThumbColor = Color.Gray,
@@ -728,11 +746,11 @@ fun ExtrasSection(
                                 val sharedAmount = when (selectedParts.toInt()) {
                                     1 -> (extraPrice / 4.0).toBigDecimal().setScale(2, RoundingMode.HALF_UP).toDouble()
                                     2 -> (extraPrice / 2.0).toBigDecimal().setScale(2, RoundingMode.HALF_UP).toDouble()
-                                    3 -> (extraPrice / 1.33).toBigDecimal().setScale(2, RoundingMode.HALF_UP).toDouble()
+                                    3 -> (extraPrice /4 * 3).toBigDecimal().setScale(2, RoundingMode.HALF_UP).toDouble()
                                     4 -> (extraPrice / 1.0).toBigDecimal().setScale(2, RoundingMode.HALF_UP).toDouble()
                                     else -> extraPrice.toBigDecimal().setScale(2, RoundingMode.HALF_UP).toDouble()
                                 }
-                            val sharedamountt = sharedAmount * 4
+                                val sharedamountt = sharedAmount * 4
                                 selectedExtras += Triple(
                                     sharedExtra.name,
                                     sharedamountt.toString(),
