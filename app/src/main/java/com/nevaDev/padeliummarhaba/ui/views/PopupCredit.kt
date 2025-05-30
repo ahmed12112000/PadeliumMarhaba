@@ -125,6 +125,7 @@ fun PopupCredit(
     var elapsedTime by remember { mutableStateOf(0f) }
     val totalTime = 240f
     val timeLeft = (totalTime - elapsedTime).toInt()
+    val formattedTotal = String.format("%.1f", totalAmountSelected)
 
     val animatedColor by animateColorAsState(
         targetValue = when {
@@ -438,7 +439,7 @@ fun PopupCredit(
                             )
                         } else {
                             Text(
-                                text = "Payer: $totalAmountSelected Crédits",
+                                text = "Payer: $formattedTotal Crédits",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White

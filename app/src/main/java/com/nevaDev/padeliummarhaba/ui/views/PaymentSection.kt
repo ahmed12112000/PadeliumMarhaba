@@ -61,6 +61,7 @@ import androidx.navigation.NavController
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.nevaDev.padeliummarhaba.viewmodels.BalanceViewModel
+import com.nevaDev.padeliummarhaba.viewmodels.ErrorCreditViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.ExtrasViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.FindTermsViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.GetBookingViewModel
@@ -73,6 +74,7 @@ import com.padelium.domain.dataresult.DataResult
 import com.padelium.domain.dto.PaymentRequest
 import com.padelium.data.dto.GetBookingResponseDTO
 import com.padelium.domain.dataresult.DataResultBooking
+import com.padelium.domain.dto.CreditErrorRequest
 import com.padelium.domain.dto.GetBookingResponse
 import com.padelium.domain.dto.GetProfileResponse
 import com.padelium.domain.dto.PaymentResponse
@@ -202,9 +204,13 @@ fun  PaymentSection1(
     viewModel9: SharedViewModel,
     findTermsViewModel: FindTermsViewModel = hiltViewModel(),
     updatePhoneViewModel: UpdatePhoneViewModel = hiltViewModel(),
-    getProfileViewModel: GetProfileViewModel = hiltViewModel()
-) {
+    getProfileViewModel: GetProfileViewModel = hiltViewModel(),
+    errorCreditViewModel: ErrorCreditViewModel = hiltViewModel(),
+
+    ) {
     val profileData by getProfileViewModel.profileData.observeAsState()
+    var popupManuallyClosed by remember { mutableStateOf(false) }
+    var bookingId by remember { mutableStateOf<String?>(null) }
 
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
@@ -233,6 +239,14 @@ fun  PaymentSection1(
     onExtrasUpdate(extrasCost, selectedRaquette, includeBalls)
     val updatePhoneResult by updatePhoneViewModel.dataResult.observeAsState()
     var showMessage by remember { mutableStateOf(false) }
+    var showPopup1 by remember { mutableStateOf(false) }
+    var elapsedTime by remember { mutableStateOf(0f) }
+    val totalTime = 240f
+    val timeLeft = (totalTime - elapsedTime).toInt()
+
+
+
+
 
     LaunchedEffect(updatePhoneResult) {
         if (updatePhoneResult is DataResult.Success) {
@@ -366,7 +380,7 @@ fun  PaymentSection1(
                 }
 
                 Button(
-                    onClick = { showPopup = true },
+                    onClick = { showPopup1 = true },
                     shape = RoundedCornerShape(13.dp),
                     border = BorderStroke(1.dp, Color(0xFF0054D8)),
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
@@ -390,12 +404,12 @@ fun  PaymentSection1(
                     val popupHeight = screenHeight / 4
 
 
-                    if (showPopup) {
+                    if (showPopup1) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.BottomCenter
                         ) {
-                            Dialog(onDismissRequest = { showPopup = false }) {
+                            Dialog(onDismissRequest = { showPopup1 = false }) {
                                 Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -415,6 +429,8 @@ fun  PaymentSection1(
                                             onValueChange = { newValue ->
                                                 if (newValue.all { it.isDigit() } && newValue.length <= 8) {
                                                     phoneNumber = newValue
+                                                    popupManuallyClosed = true // prevent auto-open
+
                                                 }
                                             },
                                             label = { Text("Numéro de téléphone") },
@@ -446,7 +462,7 @@ fun  PaymentSection1(
                                                         "text/plain".toMediaTypeOrNull(), phoneNumber
                                                     )
                                                     updatePhoneViewModel.UpdatePhone(phoneBody)
-                                                    showPopup = false
+                                                    showPopup1 = false
                                                 } else {
                                                     }
                                             },
@@ -569,22 +585,30 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                 val formatterWithMillis: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
                 val playerIds = selectedPlayers.toList()
                 var errorMessage by remember { mutableStateOf<String?>(null) }
+                var buttonCardClickInProgress by remember { mutableStateOf(false) }
+
                 LaunchedEffect(errorMessage) {
                     if (!errorMessage.isNullOrEmpty()) {
                     }
                 }
 
-
                 Button(
                     onClick = {
+                        // Prevent multiple clicks
+                        if (isLoading || buttonCardClickInProgress) return@Button
 
-                        if (isLoading) return@Button
-
+                        // Immediately disable the button
+                        buttonCardClickInProgress = true
 
                         viewModel9.updateSelectedParts(selectedParts)
 
                         coroutineScope.launch {
                             viewModel9.selectedParts.collectLatest { currentSelectedParts ->
+                                if (isLoading) {
+                                    buttonCardClickInProgress = false // Re-enable if loading
+                                    return@collectLatest
+                                }
+
                                 val selectedBooking = mappedBookings.firstOrNull()
 
                                 if (selectedBooking != null) {
@@ -632,13 +656,14 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                         }
                                     } ?: searchDate.atTime(9, 30).format(formatterWithMillis)
 
-
                                     val totalAmountSelected = adjustedAmount + totalExtrasCost
 
                                     if (totalAmountSelected <= 0) {
                                         isLoading = false
+                                        buttonCardClickInProgress = false // Re-enable button
                                         return@collectLatest
                                     }
+
                                     val formattedAmount = selectedBooking.amount?.stripTrailingZeros()?.toPlainString()?.let {
                                         if (it.contains(".")) it else it.toInt().toString()
                                     } ?: "0"
@@ -648,7 +673,6 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                     } ?: "0"
 
                                     val playerIds = selectedPlayers.toList()
-
 
                                     val formattesecondAamount = selectedBooking.secondAamount?.stripTrailingZeros()?.toPlainString()?.let {
                                         if (it.contains(".")) it else it.toInt().toString()
@@ -661,7 +685,6 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                     val formatedwithSecondPrice = selectedBooking.withSecondPrice
 
                                     val updatedMappedBookings = mappedBookings.mapIndexed { index, booking ->
-
                                         if (index == 0) {
                                             booking.copy(
                                                 numberOfPart = currentSelectedParts,
@@ -675,8 +698,6 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                                 privateExtrasIds = privateExtras,
                                                 amount = BigDecimal(formattedAmount),
                                                 aamount = BigDecimal(formattedAamount),
-
-
                                                 reductionSecondAmount = formattereductionSecondAmount.toBigDecimal(),
                                                 secondAamount = BigDecimal(formattesecondAamount),
                                                 withSecondPrice = formatedwithSecondPrice,
@@ -694,6 +715,7 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                     saveBookingViewModel.dataResult.observe(lifecycleOwner) { result ->
                                         when (result) {
                                             is DataResult.Loading -> {
+                                                // Keep button disabled during loading
                                             }
 
                                             is DataResult.Success -> {
@@ -706,29 +728,27 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                                     val bookingId = firstBooking.id.toString()
 
                                                     if (bookingId == null || bookingId == "0") {
-
-                                                      //  errorMessage = "Cette réservation n'est pas disponible pour le moment. Veuillez réessayer plus tard."
+                                                        //  errorMessage = "Cette réservation n'est pas disponible pour le moment. Veuillez réessayer plus tard."
+                                                        buttonCardClickInProgress = false // Re-enable button on error
                                                         return@observe
                                                     }
 
-
                                                     val paymentRequest = PaymentRequest(
                                                         amount = totalAmountSelected.toString(),
-                                                        currency =  "DT",
+                                                        currency = "DT",
                                                         orderId = bookingId
                                                     )
 
                                                     paymentViewModel.Payment(paymentRequest)
-                                                    paymentViewModel.dataResult.observe(
-                                                        lifecycleOwner
-                                                    ) { paymentResult ->
+                                                    paymentViewModel.dataResult.observe(lifecycleOwner) { paymentResult ->
                                                         when (paymentResult) {
                                                             is DataResult.Loading -> {
-
+                                                                // Keep button disabled during payment processing
                                                             }
 
                                                             is DataResult.Success -> {
                                                                 isLoading = false
+                                                                // Keep button disabled until navigation completes
 
                                                                 val paymentResponse = paymentResult.data as? PaymentResponse
                                                                 val formUrl = paymentResponse?.formUrl
@@ -744,46 +764,65 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                                                     val encodedBookingId = Uri.encode(bookingId)
                                                                     val navigationRoute =
                                                                         "WebViewScreen?paymentUrl=$encodedUrl&numberOfPart=$currentSelectedParts&userIds=$encodedUserIds&sharedList=$encodedSharedList&privateList=$encodedPrivateList&bookingId=$encodedBookingId"
-                                                                    navController.navigate(
-                                                                        navigationRoute
-                                                                    )
-                                                                } else {
-                                                                    isLoading = false
 
+                                                                    // Navigate and then re-enable button
+                                                                    navController.navigate(navigationRoute)
+                                                                    buttonCardClickInProgress = false // Re-enable after navigation
+                                                                } else {
+                                                                    // Call errorCreditViewModel when formUrl is null or empty
+                                                                    bookingId?.toLongOrNull()?.let { id ->
+                                                                        val request = CreditErrorRequest(
+                                                                            amount = BigDecimal.ZERO,
+                                                                            bookingIds = listOf(id),
+                                                                            buyerId = 0L,
+                                                                            payFromAvoir = false,
+                                                                            status = true,
+                                                                            token = "",
+                                                                            transactionId = 0L
+                                                                        )
+                                                                        errorCreditViewModel.ErrorCredit(request)
+                                                                    }
+
+                                                                    // Navigate to error screen after calling errorCreditViewModel
+                                                                    navController.navigate("payment_error_screen")
+                                                                    buttonCardClickInProgress = false // Re-enable after navigation
                                                                 }
                                                             }
 
                                                             is DataResult.Failure -> {
                                                                 isLoading = false
                                                                 errorMessage = "Cette réservation n'est pas disponible pour le moment. Veuillez réessayer plus tard."
-
+                                                                buttonCardClickInProgress = false // Re-enable button on failure
                                                             }
                                                         }
                                                     }
                                                 } else {
                                                     isLoading = false
                                                     errorMessage = "Une erreur s'est produite. Veuillez réessayer."
-
+                                                    buttonCardClickInProgress = false // Re-enable button on error
                                                 }
                                             }
 
                                             is DataResult.Failure -> {
                                                 isLoading = false
-
+                                                buttonCardClickInProgress = false // Re-enable button on failure
                                             }
                                         }
                                     }
                                 } else {
                                     isLoading = false
-
+                                    buttonCardClickInProgress = false // Re-enable button when no booking found
                                 }
                             }
                         }
                     },
-                    enabled = (phoneNumber.isEmpty() &&  updatePhoneResult is DataResult.Success && phoneNumber.length == 8 && phoneNumber.all { it.isDigit() } ) || (phoneNumber.isNotEmpty() && phoneNumber.length == 8 && phoneNumber.all { it.isDigit() }) ,
-
+                    enabled = !buttonCardClickInProgress && (
+                            (phoneNumber.isEmpty() && updatePhoneResult is DataResult.Success && phoneNumber.length == 8 && phoneNumber.all { it.isDigit() }) ||
+                                    (phoneNumber.isNotEmpty() && phoneNumber.length == 8 && phoneNumber.all { it.isDigit() })
+                            ),
                     modifier = Modifier
-                        .height(48.dp).offset(x = -28.dp)
+                        .height(48.dp)
+                        .offset(x = -28.dp)
                         .weight(1.2f),
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0054D8)),
                     shape = RoundedCornerShape(13.dp)
@@ -814,8 +853,6 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
 
                     )
                 }
-                var showPopup by remember { mutableStateOf(false) }
-                var bookingId by remember { mutableStateOf<String?>(null) }
                 var hasFetchedSelectedParts by remember { mutableStateOf(false) }
                 var hasFetchedBooking by remember { mutableStateOf(false) }
                 var hasFetchedPaymentPayAvoir by remember { mutableStateOf(false) }
@@ -826,6 +863,7 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
 
                 var isPaymentFlow by remember { mutableStateOf(false) }
                 var hasCompletedPayment by remember { mutableStateOf(false) }
+                var buttonClickInProgress by remember { mutableStateOf(false) }
 
 // Add a LaunchedEffect to handle navigation after payment
 
@@ -837,7 +875,12 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                 }
                 Button(
                     onClick = {
-                        if (isLoading) return@Button
+                        // Prevent multiple clicks
+                        if (isLoading || buttonClickInProgress) return@Button
+
+                        // Immediately disable the button
+                        buttonClickInProgress = true
+                        popupManuallyClosed = false // Reset the flag
 
                         if (!hasFetchedSelectedParts) {
                             viewModel9.updateSelectedParts(selectedParts)
@@ -846,7 +889,10 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
 
                         coroutineScope.launch {
                             viewModel9.selectedParts.collectLatest { currentSelectedParts ->
-                                if (isLoading) return@collectLatest
+                                if (isLoading) {
+                                    buttonClickInProgress = false // Re-enable if loading
+                                    return@collectLatest
+                                }
 
                                 val selectedBooking = mappedBookings.firstOrNull()
                                 if (selectedBooking != null) {
@@ -898,14 +944,9 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
 
                                     if (totalAmountSelected <= 0) {
                                         isLoading = false
+                                        buttonClickInProgress = false // Re-enable button
                                         return@collectLatest
                                     }
-
-
-
-
-
-
 
                                     val formattesecondAamount = selectedBooking.secondAamount?.stripTrailingZeros()?.toPlainString()?.let {
                                         if (it.contains(".")) it else it.toInt().toString()
@@ -964,8 +1005,7 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                                             reductionSecondAmount = formattereductionSecondAmount.toBigDecimal(),
                                                             secondAamount = BigDecimal(formattesecondAamount),
                                                             withSecondPrice = formatedwithSecondPrice,
-
-                                                            )
+                                                        )
                                                     } else {
                                                         booking
                                                     }
@@ -980,11 +1020,11 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                             }
                                             is DataResult.Failure -> {
                                                 isLoading = false
+                                                buttonClickInProgress = false // Re-enable button on failure
                                             }
                                         }
                                     }
 
-                                    // Observe SaveBooking Result
                                     // Modified saveBookingViewModel observer
                                     saveBookingViewModel.dataResult.observe(lifecycleOwner) { result ->
                                         when (result) {
@@ -1002,12 +1042,19 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                                     // We're in payment flow, navigate immediately without any other logic
                                                     navController.navigate("successScreen")
                                                     isPaymentFlow = false
+                                                    buttonClickInProgress = false // Re-enable after navigation
                                                 } else {
                                                     // Normal initial flow - only show error/popup logic for initial booking
                                                     if (bookingId == null || bookingId == "0") {
-                                                        errorMessage = "Cette réservation n'est pas disponible pour le moment. Veuillez réessayer."
+                                                          errorMessage = "Cette réservation n'est pas disponible pour le moment. Veuillez réessayer."
+                                                        buttonClickInProgress = false // Re-enable on error
                                                     } else {
-                                                        showPopup = true
+                                                        if (!popupManuallyClosed) {
+                                                            showPopup = true
+                                                            // Keep button disabled until popup is dismissed
+                                                        } else {
+                                                            buttonClickInProgress = false // Re-enable if popup was manually closed
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1015,15 +1062,15 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                                                 isLoading = false
                                                 isPaymentFlow = false
                                                 hasCompletedPayment = false
+                                                buttonClickInProgress = false // Re-enable button on failure
                                             }
                                         }
                                     }
-
                                 }
                             }
                         }
                     },
-                    enabled = phoneNumber.length == 8 && phoneNumber.all { it.isDigit() },
+                    enabled = phoneNumber.length == 8 && phoneNumber.all { it.isDigit() } && !buttonClickInProgress,
                     modifier = Modifier
                         .height(48.dp)
                         .offset(x = -7.dp)
@@ -1050,17 +1097,19 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                         )
                     }
                 }
-// Add this LaunchedEffect to handle navigation
 
+// Modify the PopupCredit onDismiss to re-enable the button
                 if (showPopup) {
                     PopupCredit(
                         onPayClick = {
                             showPopup = false
                             isPaymentFlow = true // Mark that we're now in payment flow
+                            // Keep button disabled during payment flow
                         },
                         onCancelClick = {
                             showPopup = false
                             isPaymentFlow = false
+                            buttonClickInProgress = false // Re-enable button when canceled
                         },
                         viewModel = hiltViewModel(),
                         navController = navController,
@@ -1071,6 +1120,9 @@ Log.d("fffffffffff","$totalSharedExtrasCost")
                         showPopup = showPopup,
                         onDismiss = {
                             showPopup = false
+                            popupManuallyClosed = true // Ensure it doesn't reopen
+                            buttonClickInProgress = false // Re-enable button when dismissed
+
                             if (!hasCompletedPayment) {
                                 isPaymentFlow = false
                             }

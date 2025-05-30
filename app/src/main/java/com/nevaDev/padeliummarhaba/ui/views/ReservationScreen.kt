@@ -60,6 +60,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Calendar
+import kotlin.math.roundToInt
 
 data class ApiChainState(
     val hasStarted: Boolean = false,
@@ -494,7 +495,7 @@ fun ReservationSummary(
 
     Log.d("totalExtrCost","$totalExtrasCost")
 
-    val totalAmountSelected = adjustedAmount + totalExtrasCost
+    val totalAmountSelected = ((adjustedAmount + totalExtrasCost) * 10).roundToInt() / 10.0
     onTotalAmountCalculated(totalAmountSelected)
 
     Column(

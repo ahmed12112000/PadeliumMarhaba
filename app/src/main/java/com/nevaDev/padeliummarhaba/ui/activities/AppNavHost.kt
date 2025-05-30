@@ -70,6 +70,11 @@ fun AppNavHost(
                     navController = navController,
                 )
             }
+            composable("ErrorPayement_screen") {
+                ErrorPayementScreen(
+                    navController = navController,
+                )
+            }
 
             composable("SignUp_SuccessScreen") {
                 SignUpSuccessScreen(

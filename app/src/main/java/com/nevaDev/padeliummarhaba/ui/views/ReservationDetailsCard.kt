@@ -40,14 +40,19 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -72,7 +77,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.math.RoundingMode
-
 @SuppressLint("StateFlowValueCalledInComposition")
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -184,7 +188,6 @@ fun ReservationDetailsCard(
             ) {
                 Text(
                     text = "Je veux payer pour",
-
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(end = 8.dp)
@@ -241,151 +244,37 @@ fun ReservationDetailsCard(
 
             if (viewModel1.selectedParts.collectAsState().value in 1..2) {
                 Text(
-                    text = "Sélectionnez vos partenaires",
+                    text = "Sélectionnez vos partenaires(Optionnel)",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(end = 16.dp)
                 )
             } else if (viewModel1.selectedParts.collectAsState().value == 3) {
                 Text(
-                    text = "Sélectionnez votre partenaire",
+                    text = "Sélectionnez vos partenaires(Optionnel)",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(end = 16.dp)
                 )
             }
 
+            // REPLACE THE ENTIRE SECTION BELOW WITH UpdatedPartnerManagement
             if (viewModel1.selectedParts.collectAsState().value != 4) {
-                Column {
-                    val selectedPlayers by findTermsViewModel.selectedPlayers.observeAsState(initial = mutableListOf())
-                    val partners = remember { mutableStateListOf<Pair<String, Long?>>() }
-
-                    if (selectedParts in 1..3) {
-                        when (selectedParts) {
-                            1 -> {
-                                for (i in 0 until 3) {
-                                    PartnerField(
-                                        label = "Partenaire ${i + 1}",
-                                        value = partners.getOrNull(i)?.first ?: "",
-                                        onValueChange = { text ->
-                                            if (partners.size > i) {
-                                                partners[i] = Pair(text, partners[i].second)
-                                            } else {
-                                                partners.add(Pair(text, null))
-                                            }
-                                        },
-                                        selectedPlayers = selectedPlayers,
-                                        findTermsViewModel = findTermsViewModel,
-                                        playerFullNames = playerFullNames,
-                                        onPlayerSelected = { selectedName, selectedId ->
-                                            if (partners.size > i) {
-                                                partners[i] = Pair(selectedName, selectedId)
-                                            } else {
-                                                partners.add(Pair(selectedName, selectedId))
-                                            }
-                                            if (!selectedPlayers.contains(selectedId)) {
-                                                selectedPlayers.add(selectedId)
-                                            }
-                                        },
-                                        isDisabled = partners.getOrNull(i)?.second != null,
-                                        selectedPlayerId = partners.getOrNull(i)?.second,
-                                        onRemovePlayer = {
-
-                                            if (partners.size > i) {
-                                                partners[i] = Pair("", null)
-                                            }
-                                            selectedPlayers.remove(partners.getOrNull(i)?.second)
-                                        }
-                                    )
-                                }
-                            }
-
-                            2 -> {
-                                for (i in 0 until 2) {
-                                    PartnerField(
-                                        label = "Partenaire ${i + 1}",
-                                        value = partners.getOrNull(i)?.first ?: "",
-                                        onValueChange = { text ->
-                                            if (partners.size > i) {
-                                                partners[i] = Pair(text, partners[i].second)
-                                            } else {
-                                                partners.add(Pair(text, null))
-                                            }
-                                        },
-                                        selectedPlayers = selectedPlayers,
-                                        findTermsViewModel = findTermsViewModel,
-                                        playerFullNames = playerFullNames,
-                                        onPlayerSelected = { selectedName, selectedId ->
-                                            if (partners.size > i) {
-                                                partners[i] = Pair(selectedName, selectedId)
-                                            } else {
-                                                partners.add(Pair(selectedName, selectedId))
-                                            }
-                                            if (!selectedPlayers.contains(selectedId)) {
-                                                selectedPlayers.add(selectedId)
-                                            }
-                                        },
-                                        isDisabled = partners.getOrNull(i)?.second != null,
-                                        selectedPlayerId = partners.getOrNull(i)?.second,
-                                        onRemovePlayer = {
-                                            if (partners.size > i) {
-                                                partners[i] = Pair("", null)
-                                            }
-                                            selectedPlayers.remove(partners.getOrNull(i)?.second)
-                                        }
-                                    )
-                                }
-                            }
-
-                            3 -> {
-                                PartnerField(
-                                    label = "Partenaire",
-                                    value = partners.getOrNull(0)?.first ?: "",
-                                    onValueChange = { text ->
-                                        if (partners.isEmpty()) {
-                                            partners.add(Pair(text, null))
-                                        } else {
-                                            partners[0] = Pair(text, partners[0].second)
-                                        }
-                                    },
-                                    selectedPlayers = selectedPlayers,
-                                    findTermsViewModel = findTermsViewModel,
-                                    playerFullNames = playerFullNames,
-                                    onPlayerSelected = { selectedName, selectedId ->
-                                        if (partners.getOrNull(0)?.first?.isNotEmpty() == true) {
-                                            partners[0] = Pair(selectedName, selectedId)
-                                        } else {
-                                            partners.add(Pair(selectedName, selectedId))
-                                        }
-                                        if (!selectedPlayers.contains(selectedId)) {
-                                            selectedPlayers.add(selectedId)
-                                        }
-                                    },
-                                    isDisabled = partners.getOrNull(0)?.second != null,
-                                    selectedPlayerId = partners.getOrNull(0)?.second,
-                                    onRemovePlayer = {
-                                        if (partners.isNotEmpty()) {
-                                            partners[0] = Pair("", null)
-                                        }
-                                        selectedPlayers.remove(partners.getOrNull(0)?.second)
-                                    }
-                                )
-                            }
-                        }
-                        val userIds = selectedPlayers.joinToString(
-                            prefix = "ID=[",
-                            postfix = "]"
-                        ) { it.toString() }
-
-                        LaunchedEffect(selectedPlayers) {
-                        }
-                    }
-                }
+                UpdatedPartnerManagement(
+                    selectedParts = selectedParts,
+                    findTermsViewModel = findTermsViewModel,
+                    playerFullNames = playerFullNames
+                )
             }
         }
     }
 }
 
+
+// Fixed version of the partner selection logic
+// Fixed version of the partner selection logic
+
+// Fixed version of the partner selection logic
 @Composable
 fun PartnerField(
     label: String,
@@ -397,18 +286,15 @@ fun PartnerField(
     onPlayerSelected: (String, Long) -> Unit,
     onRemovePlayer: () -> Unit,
     isDisabled: Boolean = false,
-    selectedPlayerId: Long?
+    selectedPlayerId: Long?,
+    showSelectedPlayerCard: Boolean = true // New parameter to control card display
 ) {
     val playersState by findTermsViewModel.players.observeAsState(initial = DataResult.Loading)
+    val shouldShowGuest by findTermsViewModel.shouldShowGuest.observeAsState(initial = false)
     var showDropdown by remember { mutableStateOf(false) }
-    var isFieldDisabled by remember { mutableStateOf(isDisabled) }
+    var isFocused by remember { mutableStateOf(false) } // Track focus state
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-
-    // Update isFieldDisabled when isDisabled prop changes
-    LaunchedEffect(isDisabled) {
-        isFieldDisabled = isDisabled
-    }
 
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -416,29 +302,37 @@ fun PartnerField(
         OutlinedTextField(
             value = value,
             onValueChange = { newText ->
-                if (isFieldDisabled) return@OutlinedTextField
-
-                val oldValue = value.trim()
-                val isDeleting = newText.length < oldValue.length
-
-                if (isDeleting) {
-                    val playerToRemove = findTermsViewModel.getPlayerByFullName(oldValue)
-                    playerToRemove?.let { player ->
-                        selectedPlayers.remove(player.id)
-                    }
-                }
-
-                // Don't auto-select on text change - only on explicit click
                 onValueChange(newText)
-                showDropdown = newText.isNotEmpty() && !isFieldDisabled
+                showDropdown = newText.isNotEmpty()
 
                 if (newText.length >= 1) {
                     val requestBody: RequestBody = newText.toRequestBody("text/plain".toMediaType())
                     findTermsViewModel.findTerms(requestBody, limit = 9)
+                } else {
+                    // Reset guest fallback when text is cleared
+                    findTermsViewModel.resetGuestFallback()
                 }
             },
-            label = { Text(label) },
-            modifier = Modifier.fillMaxWidth(),
+            label = {
+                Text(
+                    // Show "Partenaire" when focused, otherwise show the original label
+                    if (isFocused) "Partenaire" else label
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { focusState ->
+                    isFocused = focusState.isFocused
+                    if (!focusState.isFocused) {
+                        showDropdown = false
+                        keyboardController?.hide()
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { /* Allow taps on the text field itself */ }
+                    )
+                },
             shape = RoundedCornerShape(15.dp),
             colors = TextFieldDefaults.outlinedTextFieldColors(
                 focusedBorderColor = Color.Black,
@@ -453,12 +347,11 @@ fun PartnerField(
                     keyboardController?.hide()
                     showDropdown = false
                 }
-            ),
-            enabled = !isFieldDisabled
+            )
         )
 
         // Dropdown for player suggestions
-        if (showDropdown && !isFieldDisabled) {
+        if (showDropdown && selectedPlayerId == null) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -479,15 +372,11 @@ fun PartnerField(
                     }
 
                     is DataResult.Success -> {
-                        if (playerFullNames.isEmpty()) {
-                            Text(
-                                text = "No results found",
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            // Show player suggestions if available
+                            if (playerFullNames.isNotEmpty()) {
                                 items(playerFullNames) { fullName ->
                                     DropdownPlayerItem(
                                         playerName = fullName,
@@ -497,9 +386,7 @@ fun PartnerField(
                                                 val playerId = player.id
                                                 if (!selectedPlayers.contains(playerId)) {
                                                     selectedPlayers.add(playerId)
-                                                    onValueChange(player.fullName)
                                                     onPlayerSelected(player.fullName, playerId)
-                                                    isFieldDisabled = true
                                                     showDropdown = false
                                                     focusManager.clearFocus()
                                                     keyboardController?.hide()
@@ -509,65 +396,373 @@ fun PartnerField(
                                     )
                                 }
                             }
+
+                            // Show guest option if no players found and 3 seconds have passed
+                            if (playerFullNames.isEmpty() && shouldShowGuest && value.isNotEmpty()) {
+                                item {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                // Select as guest (use negative ID to distinguish from real players)
+                                                val guestId = -System.currentTimeMillis() // Unique negative ID
+                                                onPlayerSelected("Invité", guestId)
+                                                showDropdown = false
+                                                focusManager.clearFocus()
+                                                keyboardController?.hide()
+                                            }
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PersonAdd,
+                                            contentDescription = "Add Guest",
+                                            tint = Color.Gray,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = "Ajouter comme invité",
+                                                style = MaterialTheme.typography.body1,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                text = "Aucun joueur trouvé",
+                                                style = MaterialTheme.typography.caption,
+                                                color = Color.Gray.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
                     is DataResult.Failure -> {
-                        Text(
-                            text = "Error: ${(playersState as DataResult.Failure).errorMessage}",
-                            color = Color.Red,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        // Show guest option for failures too
+                        if (shouldShowGuest && value.isNotEmpty()) {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                item {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                val guestId = -System.currentTimeMillis()
+                                                onPlayerSelected("Invité", guestId)
+                                                showDropdown = false
+                                                focusManager.clearFocus()
+                                                keyboardController?.hide()
+                                            }
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PersonAdd,
+                                            contentDescription = "Add Guest",
+                                            tint = Color.Gray,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = "Ajouter comme invité",
+                                                style = MaterialTheme.typography.body1,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                text = "Erreur de recherche",
+                                                style = MaterialTheme.typography.caption,
+                                                color = Color.Gray.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     else -> {
-                        Text(
-                            text = "Start typing to search for partners.",
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        // Handle other states
                     }
                 }
             }
         }
 
-        // Selected player display
-        selectedPlayerId?.let { id ->
-            val playerName = findTermsViewModel.getPlayerById(id)?.fullName ?: ""
-            if (playerName.isNotEmpty()) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    colors = CardDefaults.cardColors(Color.LightGray.copy(alpha = 0.3f))
-                ) {
-                    Row(
+        // Selected player display (only show if showSelectedPlayerCard is true)
+        if (showSelectedPlayerCard) {
+            selectedPlayerId?.let { id ->
+                val playerName = if (id < 0) {
+                    "Invité" // Display "Invité" for guest players (negative IDs)
+                } else {
+                    findTermsViewModel.getPlayerById(id)?.fullName ?: ""
+                }
+
+                if (playerName.isNotEmpty()) {
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(top = 8.dp),
+                        colors = CardDefaults.cardColors(Color.LightGray.copy(alpha = 0.3f))
                     ) {
-                        Text(
-                            text = playerName,
-                            style = MaterialTheme.typography.body2,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = {
-                                selectedPlayers.remove(id)
-                                onValueChange("")
-                                isFieldDisabled = false
-                                onRemovePlayer()
-                            }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Remove Player",
-                                tint = Color.Red
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (id < 0) Icons.Default.PersonAdd else Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = if (id < 0) Color.Gray.copy(alpha = 0.6f) else Color.Gray,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = playerName,
+                                    style = MaterialTheme.typography.body2,
+                                    color = if (id < 0) Color.Gray.copy(alpha = 0.7f) else Color.Black,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    selectedPlayers.remove(id)
+                                    onRemovePlayer()
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Remove Player",
+                                    tint = Color.Red
+                                )
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun UpdatedPartnerManagement(
+    selectedParts: Int,
+    findTermsViewModel: FindTermsViewModel,
+    playerFullNames: List<String>
+) {
+    val selectedPlayers by findTermsViewModel.selectedPlayers.observeAsState(initial = mutableListOf())
+
+    // Create individual states for each partner field
+    val partner1 = remember { mutableStateOf(Pair("", null as Long?)) }
+    val partner2 = remember { mutableStateOf(Pair("", null as Long?)) }
+    val partner3 = remember { mutableStateOf(Pair("", null as Long?)) }
+
+    // Clear all selections when selectedParts changes
+    LaunchedEffect(selectedParts) {
+        partner1.value = Pair("", null)
+        partner2.value = Pair("", null)
+        partner3.value = Pair("", null)
+        selectedPlayers.clear()
+        findTermsViewModel.resetGuestFallback()
+    }
+
+    Column {
+        when (selectedParts) {
+            1 -> {
+                // Three partners needed
+                PartnerField(
+                    label = "Invité(e) 1",
+                    value = partner1.value.first,
+                    onValueChange = { text ->
+                        partner1.value = Pair(text, partner1.value.second)
+                    },
+                    selectedPlayers = selectedPlayers,
+                    findTermsViewModel = findTermsViewModel,
+                    playerFullNames = playerFullNames,
+                    onPlayerSelected = { selectedName, selectedId ->
+                        partner1.value = Pair(selectedName, selectedId)
+                        if (!selectedPlayers.contains(selectedId)) {
+                            selectedPlayers.add(selectedId)
+                        }
+                    },
+                    isDisabled = partner1.value.second != null,
+                    selectedPlayerId = null,
+                    showSelectedPlayerCard = true, // Show card for multiple partners
+                    onRemovePlayer = {
+                        val playerId = partner1.value.second
+                        partner1.value = Pair("", null)
+                        playerId?.let { selectedPlayers.remove(it) }
+                    }
+                )
+
+                PartnerField(
+                    label = "Invité(e) 2",
+                    value = partner2.value.first,
+                    onValueChange = { text ->
+                        partner2.value = Pair(text, partner2.value.second)
+                    },
+                    selectedPlayers = selectedPlayers,
+                    findTermsViewModel = findTermsViewModel,
+                    playerFullNames = playerFullNames,
+                    onPlayerSelected = { selectedName, selectedId ->
+                        partner2.value = Pair(selectedName, selectedId)
+                        if (!selectedPlayers.contains(selectedId)) {
+                            selectedPlayers.add(selectedId)
+                        }
+                    },
+                    isDisabled = partner2.value.second != null,
+                    selectedPlayerId = null,
+                    showSelectedPlayerCard = true, // Show card for multiple partners
+                    onRemovePlayer = {
+                        val playerId = partner2.value.second
+                        partner2.value = Pair("", null)
+                        playerId?.let { selectedPlayers.remove(it) }
+                    }
+                )
+
+                PartnerField(
+                    label = "Invité(e) 3",
+                    value = partner3.value.first,
+                    onValueChange = { text ->
+                        partner3.value = Pair(text, partner3.value.second)
+                    },
+                    selectedPlayers = selectedPlayers,
+                    findTermsViewModel = findTermsViewModel,
+                    playerFullNames = playerFullNames,
+                    onPlayerSelected = { selectedName, selectedId ->
+                        partner3.value = Pair(selectedName, selectedId)
+                        if (!selectedPlayers.contains(selectedId)) {
+                            selectedPlayers.add(selectedId)
+                        }
+                    },
+                    isDisabled = partner3.value.second != null,
+                    selectedPlayerId = null,
+                    showSelectedPlayerCard = true, // Show card for multiple partners
+                    onRemovePlayer = {
+                        val playerId = partner3.value.second
+                        partner3.value = Pair("", null)
+                        playerId?.let { selectedPlayers.remove(it) }
+                    }
+                )
+            }
+
+            2 -> {
+                // Two partners needed
+                PartnerField(
+                    label = "Invité(e) 1",
+                    value = partner1.value.first,
+                    onValueChange = { text ->
+                        partner1.value = Pair(text, partner1.value.second)
+                    },
+                    selectedPlayers = selectedPlayers,
+                    findTermsViewModel = findTermsViewModel,
+                    playerFullNames = playerFullNames,
+                    onPlayerSelected = { selectedName, selectedId ->
+                        partner1.value = Pair(selectedName, selectedId)
+                        if (!selectedPlayers.contains(selectedId)) {
+                            selectedPlayers.add(selectedId)
+                        }
+                    },
+                    isDisabled = partner1.value.second != null,
+                    selectedPlayerId = null,
+                    showSelectedPlayerCard = true, // Show card for multiple partners
+                    onRemovePlayer = {
+                        val playerId = partner1.value.second
+                        partner1.value = Pair("", null)
+                        playerId?.let { selectedPlayers.remove(it) }
+                    }
+                )
+
+                PartnerField(
+                    label = "Invité(e) 2",
+                    value = partner2.value.first,
+                    onValueChange = { text ->
+                        partner2.value = Pair(text, partner2.value.second)
+                    },
+                    selectedPlayers = selectedPlayers,
+                    findTermsViewModel = findTermsViewModel,
+                    playerFullNames = playerFullNames,
+                    onPlayerSelected = { selectedName, selectedId ->
+                        partner2.value = Pair(selectedName, selectedId)
+                        if (!selectedPlayers.contains(selectedId)) {
+                            selectedPlayers.add(selectedId)
+                        }
+                    },
+                    isDisabled = partner2.value.second != null,
+                    selectedPlayerId = null,
+                    showSelectedPlayerCard = true, // Show card for multiple partners
+                    onRemovePlayer = {
+                        val playerId = partner2.value.second
+                        partner2.value = Pair("", null)
+                        playerId?.let { selectedPlayers.remove(it) }
+                    }
+                )
+            }
+
+            3 -> {
+                // One partner needed - special case
+                PartnerField(
+                    label = "Invité(e)",
+                    value = partner1.value.first,
+                    onValueChange = { text ->
+                        partner1.value = Pair(text, partner1.value.second)
+                    },
+                    selectedPlayers = selectedPlayers,
+                    findTermsViewModel = findTermsViewModel,
+                    playerFullNames = playerFullNames,
+                    onPlayerSelected = { selectedName, selectedId ->
+                        partner1.value = Pair(selectedName, selectedId)
+                        if (!selectedPlayers.contains(selectedId)) {
+                            selectedPlayers.add(selectedId)
+                        }
+                    },
+                    isDisabled = partner1.value.second != null,
+                    selectedPlayerId = partner1.value.second,
+                    showSelectedPlayerCard = false, // Hide card for single partner
+                    onRemovePlayer = {
+                        val playerId = partner1.value.second
+                        partner1.value = Pair("", null)
+                        playerId?.let { selectedPlayers.remove(it) }
+                    }
+                )
+            }
+        }
+
+        // Display selected partners list for cases with 2 or 3 partners
+        if (selectedParts == 1 || selectedParts == 2) {
+            val selectedPartnerNames = mutableListOf<Pair<String, Long?>>()
+
+            // Partner 1
+            val partner1Name = partner1.value.second?.let { id ->
+                if (id < 0) "Invité" else findTermsViewModel.getPlayerById(id)?.fullName ?: partner1.value.first
+            } ?: if (partner1.value.first.isEmpty()) "Invité" else partner1.value.first
+            selectedPartnerNames.add(Pair(partner1Name, partner1.value.second))
+
+            if (selectedParts == 1) {
+                // Partner 2
+                val partner2Name = partner2.value.second?.let { id ->
+                    if (id < 0) "Invité" else findTermsViewModel.getPlayerById(id)?.fullName ?: partner2.value.first
+                } ?: if (partner2.value.first.isEmpty()) "Invité" else partner2.value.first
+                selectedPartnerNames.add(Pair(partner2Name, partner2.value.second))
+
+                // Partner 3
+                val partner3Name = partner3.value.second?.let { id ->
+                    if (id < 0) "Invité" else findTermsViewModel.getPlayerById(id)?.fullName ?: partner3.value.first
+                } ?: if (partner3.value.first.isEmpty()) "Invité" else partner3.value.first
+                selectedPartnerNames.add(Pair(partner3Name, partner3.value.second))
+            } else if (selectedParts == 2) {
+                // Partner 2
+                val partner2Name = partner2.value.second?.let { id ->
+                    if (id < 0) "Invité" else findTermsViewModel.getPlayerById(id)?.fullName ?: partner2.value.first
+                } ?: if (partner2.value.first.isEmpty()) "Invité" else partner2.value.first
+                selectedPartnerNames.add(Pair(partner2Name, partner2.value.second))
             }
         }
     }

@@ -32,7 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.MutableLiveData
 import androidx.navigation.NavController
+import com.nevaDev.padeliummarhaba.viewmodels.ErrorCreditViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.FindTermsViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.GetProfileViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.PartnerPayViewModel
@@ -41,6 +43,7 @@ import com.nevaDev.padeliummarhaba.viewmodels.PaymentPartBookingViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.PaymentPartViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.PrivateExtrasViewModel
 import com.padelium.domain.dataresult.DataResult
+import com.padelium.domain.dto.CreditErrorRequest
 import com.padelium.domain.dto.PaymentPartBookingRequest
 import com.padelium.domain.dto.PaymentRequest
 import com.padelium.domain.dto.PaymentResponse
@@ -58,8 +61,10 @@ fun PartnerPaymentScreen(
     viewModel3: PaymentPartViewModel = hiltViewModel(),
     partnerPayId: String?,
     viewModel2: PaymentParCreditViewModel = hiltViewModel(),
+    errorCreditViewModel: ErrorCreditViewModel = hiltViewModel(),
 
     ) {
+
     var showPopup by remember { mutableStateOf(false) }
     val viewModel: GetProfileViewModel = hiltViewModel()
     var totalPrice by remember { mutableStateOf(BigDecimal.ZERO) }
@@ -68,6 +73,7 @@ fun PartnerPaymentScreen(
     var selectedExtras by remember { mutableStateOf<List<Quadruple<String, String, Int, Long>>>(emptyList()) }
     var totalExtrasCost by remember { mutableStateOf(0.0) }
     val privateList = remember { mutableStateOf<MutableList<Long>>(mutableListOf()) }
+    var buttonCardClickInProgress by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
 
@@ -151,69 +157,143 @@ fun PartnerPaymentScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
                 var errorMessage by remember { mutableStateOf("") }
+                val coroutineScope = rememberCoroutineScope()
+
                 Row(modifier = Modifier.weight(1.1f)) {
+
 
                     Button(
                         onClick = {
-                            viewModel4.partnerPayResponse.observeForever { response ->
-                                response?.let {
-                                    val totalAmount =
-                                        (response.amount + totalExtrasCost.toBigDecimal()).setScale(
-                                            2,
-                                            RoundingMode.HALF_UP
-                                        )
+                            if (!buttonCardClickInProgress) {
+                                buttonCardClickInProgress = true
 
-                                    val paymentRequest = PaymentRequest(
-                                        amount = totalAmount.toString(),
-                                        currency = "DT",
-                                        orderId = response.id.toString()
-                                    )
+                                coroutineScope.launch {
+                                    try {
+                                        val currentResponse = viewModel4.partnerPayResponse.value
 
-                                    viewModel3.PaymentPart(paymentRequest)
+                                        if (currentResponse != null) {
+                                            val totalAmount = (currentResponse.amount + totalExtrasCost.toBigDecimal())
+                                                .setScale(2, RoundingMode.HALF_UP)
 
-                                    viewModel3.dataResult.observeForever { paymentResult ->
-                                        when (paymentResult) {
-                                            is DataResult.Loading -> {
-                                                errorMessage = "" }
+                                            val paymentRequest = PaymentRequest(
+                                                amount = totalAmount.toString(),
+                                                currency = "DT",
+                                                orderId = currentResponse.id.toString()
+                                            )
 
-                                            is DataResult.Success -> {
+                                            // Call payment
+                                            viewModel3.PaymentPart(paymentRequest)
 
-                                                val paymentResponse =
-                                                    paymentResult.data as? PaymentResponse
-                                                val formUrl = paymentResponse?.formUrl
-                                                val orderId = paymentResponse?.orderId
-                                                val encodedBookingId =
-                                                    Uri.encode(paymentRequest.orderId)
-                                                val privateListString =
-                                                    privateList.value.joinToString(",")
-                                                val encodedPrivateList =
-                                                    Uri.encode(privateListString)
-                                                val encodedPartnerPayId =
-                                                    Uri.encode(partnerPayId ?: "")
+                                            // Wait for result and handle it
+                                            viewModel3.dataResult.value?.let { result ->
+                                                when (result) {
+                                                    is DataResult.Success -> {
+                                                        val paymentResponse = result.data as? PaymentResponse
+                                                        Log.d("PaymentResponse", "Full response: $paymentResponse")
+                                                        Log.d("PaymentResponse", "FormUrl: '${paymentResponse?.formUrl}'")
+                                                        Log.d("PaymentResponse", "PayUrl: '${paymentResponse?.payUrl}'")
+                                                        Log.d("PaymentResponse", "OrderId: '${paymentResponse?.orderId}'")
+                                                        Log.d("PaymentResponse", "ErrorCode: '${paymentResponse?.errorCode}'")
+                                                        Log.d("PaymentResponse", "ErrorMessage: '${paymentResponse?.errorMessage}'")
 
-                                                if (!formUrl.isNullOrEmpty() && !orderId.isNullOrEmpty()) {
-                                                    val encodedUrl = Uri.encode(formUrl)
+                                                        // Try formUrl first, then payUrl as fallback
+                                                        val formUrl = paymentResponse?.formUrl?.takeIf { it.isNotEmpty() }
+                                                            ?: paymentResponse?.payUrl?.takeIf { it.isNotEmpty() }
+                                                        val orderId = paymentResponse?.orderId
 
-                                                    val navigationRoutee =
-                                                        "WebViewScreen2?formUrl=$encodedUrl&orderId=$orderId&BookingId=$encodedBookingId&privateList=$encodedPrivateList&encodedPartnerPayId=$encodedPartnerPayId"
+                                                        if (!formUrl.isNullOrEmpty() && !orderId.isNullOrEmpty()) {
+                                                            // Success case - navigate to WebView
+                                                            val encodedUrl = Uri.encode(formUrl)
+                                                            val encodedBookingId = Uri.encode(paymentRequest.orderId)
+                                                            val privateListString = privateList.value.joinToString(",")
+                                                            val encodedPrivateList = Uri.encode(privateListString)
+                                                            val encodedPartnerPayId = Uri.encode(partnerPayId ?: "")
 
-                                                    navController.navigate(navigationRoutee)
-                                                    errorMessage = ""
-                                                } else {
+                                                            val navigationRoute = "WebViewScreen2?formUrl=$encodedUrl&orderId=$orderId&BookingId=$encodedBookingId&privateList=$encodedPrivateList&encodedPartnerPayId=$encodedPartnerPayId"
+                                                            navController.navigate(navigationRoute)
+                                                            errorMessage = ""
+                                                        } else {
+                                                            // Error case - formUrl is null or empty
+                                                            // ErrorCredit is already called in the ViewModel
+                                                            Log.e("PaymentError", "FormUrl and PayUrl are both null/empty. Navigating to error screen.")
+                                                            navController.navigate("ErrorPayement_screen")
+                                                            errorMessage = "Cette réservation n'est pas disponible pour le moment."
+                                                        }
+                                                    }
 
-                                                    errorMessage = "Cette réservation n'est pas disponible pour le moment."
+                                                    is DataResult.Failure -> {
+                                                        Log.e("PaymentError", "Payment API failed: ${result.errorMessage}")
+
+                                                        // Call ErrorCredit for API failure (this case is not handled in ViewModel)
+                                                        val errorRequest = CreditErrorRequest(
+                                                            amount = BigDecimal.ZERO,
+                                                            bookingIds = listOf(currentResponse.id),
+                                                            buyerId = 0L,
+                                                            payFromAvoir = false,
+                                                            status = true,
+                                                            token = "",
+                                                            transactionId = 0L
+                                                        )
+                                                       // errorCreditViewModel.ErrorCredit(errorRequest)
+
+                                                        navController.navigate("ErrorPayement_screen")
+                                                        errorMessage = "Payment failed: ${result.errorMessage}"
+                                                    }
+
+                                                    is DataResult.Loading -> {
+                                                        errorMessage = ""
+                                                        // Don't call ErrorCredit during loading
+                                                    }
                                                 }
-                                            }
+                                            } ?: run {
+                                                // dataResult.value is null - this is also an error case
+                                                Log.e("PaymentError", "dataResult.value is null after payment call")
 
-                                            is DataResult.Failure -> {
-                                                errorMessage = "Payment failed: ${paymentResult.errorMessage}"
+                                                val errorRequest = CreditErrorRequest(
+                                                    amount = BigDecimal.ZERO,
+                                                    bookingIds = listOf(currentResponse.id),
+                                                    buyerId = 0L,
+                                                    payFromAvoir = false,
+                                                    status = true,
+                                                    token = "",
+                                                    transactionId = 0L
+                                                )
+                                            //    errorCreditViewModel.ErrorCredit(errorRequest)
+
+                                                navController.navigate("ErrorPayement_screen")
+                                                errorMessage = "No payment response received"
                                             }
+                                        } else {
+                                            Log.e("PaymentError", "currentResponse is null")
+                                            errorMessage = "No reservation data available"
                                         }
+                                    } catch (e: Exception) {
+                                        Log.e("PaymentError", "Exception in payment flow", e)
+
+                                        // Call ErrorCredit for exceptions
+                                        val currentResponse = viewModel4.partnerPayResponse.value
+                                        if (currentResponse != null) {
+                                            val errorRequest = CreditErrorRequest(
+                                                amount = BigDecimal.ZERO,
+                                                bookingIds = listOf(currentResponse.id),
+                                                buyerId = 0L,
+                                                payFromAvoir = false,
+                                                status = true,
+                                                token = "",
+                                                transactionId = 0L
+                                            )
+                                          //  errorCreditViewModel.ErrorCredit(errorRequest)
+                                        }
+
+                                        navController.navigate("ErrorPayement_screen")
+                                        errorMessage = "An error occurred during payment"
+                                    } finally {
+                                        buttonCardClickInProgress = false
                                     }
                                 }
                             }
                         },
-                        enabled = !isLoading,
+                        enabled = !isLoading && !buttonCardClickInProgress,
                         modifier = Modifier
                             .offset(x = -15.dp)
                             .height(48.dp)

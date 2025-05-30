@@ -87,7 +87,7 @@ fun PopupCreditPartner(
     LaunchedEffect(dataResult) {
         when (dataResult) {
             is DataResult.Success -> {
-                navController.navigate("main_screen")
+                navController.navigate("summary_screen")
             }
             is DataResult.Failure -> {
             }

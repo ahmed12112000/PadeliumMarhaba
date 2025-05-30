@@ -112,7 +112,7 @@ fun LoginScreen(
             }
             is Resulta.Failure -> {
                 Log.e("LoginDebug", "Failure state: ${result.exception?.message}")
-                errorMessage = "Nom d'utilisateur ou Mot de passe invalide"
+                errorMessage = "E-mail ou Mot de passe invalide"
             }
             else -> {
                 Log.d("LoginDebug", "Unknown state: $result")

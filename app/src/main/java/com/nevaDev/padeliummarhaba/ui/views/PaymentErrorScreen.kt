@@ -38,7 +38,10 @@ fun PaymentErrorScreen(navController: NavController,
             repeatMode = RepeatMode.Reverse
         )
     )
+/*
 
+
+ */
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -85,7 +88,7 @@ fun PaymentErrorScreen(navController: NavController,
         ) {
             Icon(imageVector = Icons.Outlined.Home, contentDescription = "Réessayer")
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "Accueil", fontWeight = FontWeight.SemiBold)
+            Text(text = "Accueil", fontWeight = FontWeight.SemiBold, color = Color.White)
         }
     }
 }
