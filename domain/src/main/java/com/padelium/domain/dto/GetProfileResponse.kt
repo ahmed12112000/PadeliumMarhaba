@@ -1,9 +1,11 @@
 package com.padelium.domain.dto
 
+import java.math.BigDecimal
+
 data class GetProfileResponse(
     val activated: Boolean = false,
     val authorities: List<String> = emptyList(),
-    val avoir: String = 0L.toString(),
+    val avoir: BigDecimal,
     val createdBy: String = "",
     val valcreatedDate: String = "",
     val email: String = "",

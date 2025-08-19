@@ -1,6 +1,7 @@
 package com.nevaDev.padeliummarhaba.ui.views
 
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.nevaDev.padeliummarhaba.viewmodels.CreditPayViewModel
 import com.nevaDev.padeliummarhaba.viewmodels.GetPacksViewModel
+import com.nevaDev.padeliummarhaba.viewmodels.GetProfileViewModel
 import com.nevadev.padeliummarhaba.R
 import com.padelium.domain.dataresult.DataResult
 import com.padelium.domain.dataresult.DataResultBooking
@@ -58,8 +61,13 @@ fun CreditPayment(
     navController: NavController,
     viewModel: GetPacksViewModel = hiltViewModel(),
     viewModel2: CreditPayViewModel = hiltViewModel(),
+    viewModel3: GetProfileViewModel = hiltViewModel(),
 
-) {
+    ) {
+    val profileData by viewModel3.profileData.observeAsState()
+    var isLoading by remember { mutableStateOf(true) }
+    var avoir by remember { mutableStateOf("") }
+
     val packsData by viewModel.packsData.observeAsState(DataResult.Loading)
     val CreditsData by viewModel2.CreditsData.observeAsState()
     val Credits = remember { mutableStateOf<List<CreditPayResponse>>(emptyList()) }
@@ -79,6 +87,47 @@ fun CreditPayment(
 
     LaunchedEffect(Unit) {
         viewModel2.GetCreditPay()
+        viewModel3.fetchProfileData()
+
+    }
+
+    LaunchedEffect(profileData) {
+        Log.d("ProfileScreen", "Profile data changed: $profileData")
+
+        when (val result = profileData) {
+            is DataResultBooking.Success -> {
+                Log.d("ProfileScreen", "Success state received")
+                try {
+                    val profile = result.data
+                    Log.d("ProfileScreen", "Profile data: $profile")
+
+                    if (profile != null) {
+                        avoir = (profile.avoir ?: "").toString()
+
+
+                    } else {
+                        Log.e("ProfileScreen", "Profile is null")
+
+                    }
+                } catch (e: Exception) {
+                    Log.e("ProfileScreen", "Error processing profile data: ${e.message}", e)
+
+                }
+                isLoading = false
+            }
+            is DataResultBooking.Loading -> {
+                Log.d("ProfileScreen", "Loading state")
+                isLoading = true
+            }
+            is DataResultBooking.Failure -> {
+                Log.e("ProfileScreen", "Exception: ${result.exception?.message}")
+                isLoading = false
+            }
+            null -> {
+                Log.d("ProfileScreen", "Profile data is null")
+                isLoading = true
+            }
+        }
     }
     when (val result = packsData) {
         is DataResult.Loading -> {
@@ -147,7 +196,7 @@ fun CreditPayment(
                     elevation = 2.dp
                 ) {
                     Text(
-                        text = "Votre solde est $balance Crédits",
+                        text = "Votre solde est $avoir Crédits",
                         modifier = Modifier.padding(16.dp),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,

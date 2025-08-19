@@ -14,8 +14,8 @@ android {
 
     defaultConfig {
         applicationId = "com.spofun.padeliummarhaba"
-        versionCode = 50
-        versionName = "2.0.8-fer.2"
+        versionCode = 56
+        versionName = "2.0.8-fer.5"
         minSdk = 28
         targetSdk = 34
         vectorDrawables.useSupportLibrary = true

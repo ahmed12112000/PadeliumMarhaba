@@ -1,5 +1,6 @@
 package com.nevaDev.padeliummarhaba.ui.views
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -93,7 +94,6 @@ fun SummaryScreen(
     var filterByType by remember { mutableStateOf(false) }
     var selectedStatusType by remember { mutableStateOf("") }
     var showTypeFilterPopup by remember { mutableStateOf(false) }
-    val isLoading = reservationData == null || reservationData is DataResultBooking.Loading
     var sortByReference by remember { mutableStateOf(false) }
     var showSortPopup by remember { mutableStateOf(false) }
     var filterByDate by remember { mutableStateOf(false) }
@@ -102,17 +102,42 @@ fun SummaryScreen(
     var referenceFilterText by remember { mutableStateOf("") }
     var filterByReference by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        viewModel.GetReservation()
+    LaunchedEffect(reservationData) {
+        Log.d("SummaryScreen", "reservationData changed: $reservationData")
+        when (reservationData) {
+            is DataResultBooking.Success -> {
+                val data = (reservationData as DataResultBooking.Success<List<GetReservationResponse>>).data
+                Log.d("SummaryScreen", "Success - Reservations count: ${data.size}")
+                reservations.value = data.sortedByDescending {
+                    try {
+                        LocalDate.parse(it.bookingDate, DateTimeFormatter.ofPattern("dd-MM-yyyy", Locale.FRANCE))
+                    } catch (e: Exception) {
+                        Log.e("SummaryScreen", "Error parsing date: ${it.bookingDate}", e)
+                        LocalDate.MIN // Fallback for invalid dates
+                    }
+                }
+                Log.d("SummaryScreen", "Reservations set: ${reservations.value.size}")
+            }
+            is DataResultBooking.Failure -> {
+                Log.e("SummaryScreen", "Error loading reservations: ${(reservationData as DataResultBooking.Failure).errorMessage}")
+                Log.e("SummaryScreen", "Exception: ${(reservationData as DataResultBooking.Failure).exception?.message}")
+                Log.e("SummaryScreen", "Error code: ${(reservationData as DataResultBooking.Failure).errorCode}")
+
+                reservations.value = emptyList()
+            }
+            is DataResultBooking.Loading -> {
+                Log.d("SummaryScreen", "Loading reservations...")
+            }
+            null -> {
+                Log.d("SummaryScreen", "ReservationData is null")
+            }
+        }
     }
 
-    LaunchedEffect(reservationData) {
-        if (reservationData is DataResultBooking.Success) {
-            reservations.value = (reservationData as DataResultBooking.Success<List<GetReservationResponse>>).data
-                .sortedByDescending {
-                    LocalDate.parse(it.bookingDate, DateTimeFormatter.ofPattern("dd-MM-yyyy", Locale.FRANCE))
-                }
-        }
+    LaunchedEffect(Unit) {
+        Log.d("SummaryScreen", "Calling GetReservation() and GetStatuses()")
+        viewModel.GetReservation()
+        viewModel2.GetStatuses()
     }
 
     LaunchedEffect(profilesData) {
@@ -128,6 +153,11 @@ fun SummaryScreen(
         }
     }
 
+    val isLoading = when (reservationData) {
+        null -> true
+        is DataResultBooking.Loading -> true
+        else -> false
+    }
 
     val filteredReservations = remember(
         selectedDate,
@@ -141,6 +171,7 @@ fun SummaryScreen(
         referenceFilterText
     ) {
         var filteredList = reservations.value
+        Log.d("SummaryScreen", "Filtering reservations. Original count: ${filteredList.size}")
 
         selectedDate?.let { dateMillis ->
             val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy", Locale.FRANCE)
@@ -150,28 +181,33 @@ fun SummaryScreen(
                 .format(formatter)
 
             filteredList = filteredList.filter { it.bookingDate == selectedFormattedDate }
+            Log.d("SummaryScreen", "After date filter: ${filteredList.size}")
         }
 
-        if (filterByName) {
+        if (filterByName && nameFilterText.isNotEmpty()) {
             filteredList = filteredList.filter {
                 it.establishmentName.contains(nameFilterText, ignoreCase = true)
             }
+            Log.d("SummaryScreen", "After name filter: ${filteredList.size}")
         }
-        if (filterByType && selectedStatusType.isNotEmpty()) {
+
+        if (filterByType && selectedStatusType.isNotEmpty() && selectedStatusType != "Toutes Réservations") {
             filteredList = filteredList.filter {
                 it.bookingStatusName.equals(selectedStatusType, ignoreCase = true)
             }
+            Log.d("SummaryScreen", "After type filter: ${filteredList.size}")
         }
 
-        if (filterByReference) {
+        if (filterByReference && referenceFilterText.isNotEmpty()) {
             filteredList = filteredList.filter {
                 it.reference?.contains(referenceFilterText, ignoreCase = true) ?: false
             }
+            Log.d("SummaryScreen", "After reference filter: ${filteredList.size}")
         }
 
+        Log.d("SummaryScreen", "Final filtered count: ${filteredList.size}")
         filteredList
     }
-
 
     ModalBottomSheetLayout(
         sheetContent = {
@@ -202,6 +238,7 @@ fun SummaryScreen(
             )
             Divider(modifier = Modifier.padding(vertical = 8.dp), thickness = 1.dp, color = Color.Gray)
 
+            // Filter UI section
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -220,6 +257,7 @@ fun SummaryScreen(
                     }
                     DropdownMenu(expanded = showFilterMenu, onDismissRequest = { showFilterMenu = false }) {
                         DropdownMenuItem(onClick = {
+                            // Reset all other filters
                             filterByName = false
                             nameFilterText = ""
                             filterByType = false
@@ -235,6 +273,7 @@ fun SummaryScreen(
                         }
 
                         DropdownMenuItem(onClick = {
+                            // Reset all other filters
                             filterByType = false
                             selectedStatusType = ""
                             filterByReference = false
@@ -245,7 +284,9 @@ fun SummaryScreen(
                             showFilterMenu = false
                             showNameFilterPopup = true
                         }) { Text("Par Nom ") }
+
                         DropdownMenuItem(onClick = {
+                            // Reset all other filters
                             filterByName = false
                             nameFilterText = ""
                             filterByReference = false
@@ -266,6 +307,7 @@ fun SummaryScreen(
 
                 Spacer(modifier = Modifier.weight(0.09f))
 
+                // Search box for reference
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -326,7 +368,6 @@ fun SummaryScreen(
                                         .weight(1f)
                                         .fillMaxHeight()
                                         .padding(start = 5.dp),
-
                                     contentAlignment = Alignment.CenterStart
                                 ) {
                                     innerTextField()
@@ -335,89 +376,11 @@ fun SummaryScreen(
                         }
                     )
                 }
-
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-
-            if (showSortPopup) {
-                Column(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .background(Color.White, shape = RoundedCornerShape(8.dp))
-                        .shadow(4.dp)
-                        .padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        IconButton(onClick = {
-                            referenceFilterText = ""
-                            showSortPopup = false
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Fermer",
-                                tint = Color.Gray
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "Filtrer par référence",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(4.dp, shape = RoundedCornerShape(8.dp))
-                            .background(Color.White, shape = RoundedCornerShape(8.dp))
-                    ) {
-                        TextField(
-                            value = referenceFilterText,
-                            onValueChange = { referenceFilterText = it },
-                            label = { Text("Référence de réservation") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color.Transparent),
-                            colors = TextFieldDefaults.textFieldColors(
-                                backgroundColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Gray,
-                                unfocusedIndicatorColor = Color.LightGray,
-                                focusedLabelColor = Color.LightGray,
-                                unfocusedLabelColor = Color.LightGray,
-                                cursorColor = Color.Black,
-                                textColor = Color.Black
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            filterByReference = referenceFilterText.isNotEmpty()
-                            showSortPopup = false
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFF0066CC), shape = RoundedCornerShape(8.dp)),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0066CC))
-                    ) {
-                        Text(
-                            text = "Filtrer",
-                            color = Color.White,
-                            fontSize = 18.sp
-                        )
-                    }
-                }
-            }
-
+            // Filter popups and date picker
             if (showDatePicker) {
                 CustomDatePickerModal1(
                     onDateSelected = { dateMillis ->
@@ -442,6 +405,7 @@ fun SummaryScreen(
                     ) {
                         IconButton(onClick = {
                             nameFilterText = ""
+                            filterByName = false
                             showNameFilterPopup = false
                         }) {
                             Icon(
@@ -505,9 +469,8 @@ fun SummaryScreen(
                 }
             }
 
-
             if (showTypeFilterPopup) {
-                val statusOptions = listOf("Toutes Réservations", "Confirmée", "En attente de paiement")
+                val statusOptions = listOf("Toutes Réservations", "confirmée", "En attente de paiement", "annulée")
 
                 AlertDialog(
                     onDismissRequest = { showTypeFilterPopup = false },
@@ -567,7 +530,7 @@ fun SummaryScreen(
                 )
             }
 
-
+            // Main content - Loading or Reservations list
             if (isLoading) {
                 Box(
                     modifier = Modifier
@@ -578,20 +541,43 @@ fun SummaryScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                filteredReservations.forEach { reservation ->
-                    ReservationCard(
-                        reservation = reservation,
-                        onClick = {
-                            selectedReservation = reservation
-                            viewModel1.fetchProfileById(reservation.id)
-                            coroutineScope.launch { sheetState.show() }
-                        },
-                        viewModel1 = viewModel1,
-                        bookingStatusCode = reservation.bookingStatusCode,
-                        onShowDialog = { showDialog = true },
-                        navController = navController
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                // Debug info
+                Text(
+                    text = "Debug: Total reservations: ${reservations.value.size}, Filtered: ${filteredReservations.size}",
+                    fontSize = 10.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                if (filteredReservations.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Aucune réservation trouvée",
+                            fontSize = 16.sp,
+                            color = Color.Gray
+                        )
+                    }
+                } else {
+                    filteredReservations.forEach { reservation ->
+                        ReservationCard(
+                            reservation = reservation,
+                            onClick = {
+                                selectedReservation = reservation
+                                viewModel1.fetchProfileById(reservation.id)
+                                coroutineScope.launch { sheetState.show() }
+                            },
+                            viewModel1 = viewModel1,
+                            bookingStatusCode = reservation.bookingStatusCode,
+                            onShowDialog = { showDialog = true },
+                            navController = navController
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
             }
         }
@@ -616,7 +602,6 @@ fun SummaryScreen(
         }
     }
 }
-
 @Composable
 fun ReservationCard(
     reservation: GetReservationResponse,
@@ -629,9 +614,11 @@ fun ReservationCard(
     viewModel2: GetProfileByIdViewModel = hiltViewModel(),
     viewModel4: PartnerPayViewModel = hiltViewModel(),
     viewModel5: PartnerPayViewModel = hiltViewModel(),
+    viewModel6: GetStatusesViewModel = hiltViewModel(),
 
     ) {
 
+    val reservationStatuses by viewModel6.ReservationsData1.observeAsState()
 
     val bookingDate = reservation.bookingDate
     val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy", Locale.FRANCE)
@@ -646,6 +633,14 @@ fun ReservationCard(
     val sheetState = rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
     val profilesData by viewModel1.profilesData.observeAsState()
     val partnerPayResponse by viewModel5.partnerPayResponse.observeAsState()
+
+    val statusName = when (val statusesData = reservationStatuses) {
+        is DataResultBooking.Success -> {
+            statusesData.data.find { it.code == reservation.bookingStatusCode }?.name
+                ?: reservation.bookingStatusName
+        }
+        else -> reservation.bookingStatusName
+    }
 
     LaunchedEffect(partnerPayResponse) {
         partnerPayResponse?.let { response ->
@@ -724,18 +719,20 @@ fun ReservationCard(
             Spacer(modifier = Modifier.height(7.dp))
 
             Text(
-                text = if (reservation.bookingStatusName == "erreur de paiement") "en attente de paiement" else reservation.bookingStatusName,
+                text = statusName,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .background(when (reservation.bookingStatusCode) {
-                        "PAY" -> Color(0xFF4CAF50)
+                        "cnf" -> Color(0xFF4CAF50)      // confirmée - Green
                         "WAIT" -> Color(0xFFFBC02D)
-                        else -> if (reservation.bookingStatusName == "erreur de paiement") Color(0xFFFBC02D) else Color(0xFF4CAF50)
+                        "annul" -> Color(0xFFD32F2F)    // annulée - Red
+                        else -> Color(0xFF4CAF50)       // Default - Green
                     })
                     .padding(vertical = 4.dp, horizontal = 8.dp)
+
             )
             Spacer(modifier = Modifier.height(-6.dp))
 
@@ -806,14 +803,14 @@ fun ReservationCard1(
     reservation1: GetReservationIDResponse,
     bookingStatusCode: String
 ) {
-    val bookingDate = reservation.created
+    // Parse created date (ISO format)
+    val createdDateTime = ZonedDateTime.parse(reservation.created)
+    val formattedCreatedDate = createdDateTime.format(DateTimeFormatter.ofPattern("EEEE d MMM yyyy", Locale.FRANCE))
 
-    // Parse the ISO 8601 datetime string first
-    val dateTime = ZonedDateTime.parse(bookingDate)
-    val date = dateTime.toLocalDate()
-
-    val formattedDate = date.format(DateTimeFormatter.ofPattern("EEEE d MMM yyyy", Locale.FRANCE))
-    val formattedCreatedDate = date.format(DateTimeFormatter.ofPattern("EEEE d MMM yyyy", Locale.FRANCE))
+    // Parse booking date (dd-MM-yyyy format)
+    val bookingDateFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy", Locale.FRANCE)
+    val bookingDate = LocalDate.parse(reservation1.bookingDate, bookingDateFormatter)
+    val formattedBookingDate = bookingDate.format(DateTimeFormatter.ofPattern("EEEE d MMM yyyy", Locale.FRANCE))
 
     LazyColumn(
         modifier = Modifier
@@ -854,53 +851,52 @@ fun ReservationCard1(
                         val formattedAmount = "%.0f".format(reservation.sellAmount)
 
                         Text(
-                            text = "${formattedAmount } DT",
+                            text = "${formattedAmount} DT",
                             fontWeight = FontWeight.Bold,
                             fontSize = 24.sp,
                             color = Color.Black
                         )
 
-                                Text(
-                                    text = reservation.bookingStatusName,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(
-                                            when (reservation.bookingStatusCode) {
-                                                "PAY" -> Color(0xFF4CAF50)
-                                                "WAIT" -> Color(0xFFFBC02D)
-                                                else -> Color(0xFF4CAF50)
-                                            }
-                                        )
-                                        .padding(vertical = 4.dp, horizontal = 8.dp)
+                        Text(
+                            text = reservation.bookingStatusName,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    when (reservation.bookingStatusCode) {
+                                        "PAY" -> Color(0xFF4CAF50)
+                                        "WAIT" -> Color(0xFFFBC02D)
+                                        else -> Color(0xFF4CAF50)
+                                    }
                                 )
-                            }
+                                .padding(vertical = 4.dp, horizontal = 8.dp)
+                        )
+                    }
 
-                            Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = formattedDate,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Gray
-                                )
-                                Text(
-                                    text = ", ${reservation.fromStrTime} - ${reservation.toStrTime}",
-                                    fontWeight = FontWeight.Normal,
-                                    fontSize = 16.sp,
-                                    color = Color.Gray
-                                )
-                            }
-                        }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = formattedBookingDate,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = ", ${reservation1.fromStrTime} - ${reservation1.toStrTime}",
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 16.sp,
+                            color = Color.Gray
+                        )
                     }
                 }
-
+            }
+        }
 
         item {
             Spacer(modifier = Modifier.height(16.dp))
@@ -1076,7 +1072,7 @@ fun PreviewReservationCard1() {
         isWaitForPay = false,
         bookingLabelId = 1L,
         bookingLabelName = "",
-        bookingLabelColors = "",
+        bookingLabelColor = "",
         sharedExtrasIds = listOf(),
         privateExtrasIds = listOf(),
         privateExtrasLocalIds = mutableMapOf(),

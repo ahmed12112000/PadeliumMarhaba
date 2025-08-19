@@ -126,7 +126,7 @@ fun WebViewScreen1(
                             return true
                         }
                         override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
-                            handler?.proceed()
+                            handler?.cancel()
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {
@@ -255,7 +255,7 @@ fun WebViewScreen2(
                             handler: SslErrorHandler?,
                             error: SslError?
                         ) {
-                            handler?.proceed()
+                            handler?.cancel()
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {
@@ -438,7 +438,7 @@ fun WebViewScreen(
                                 handler: SslErrorHandler?,
                                 error: SslError?
                             ) {
-                                handler?.proceed()
+                                handler?.cancel()
                             }
 
                             override fun onPageFinished(view: WebView?, url: String?) {

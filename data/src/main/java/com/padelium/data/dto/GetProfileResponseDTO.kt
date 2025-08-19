@@ -1,16 +1,18 @@
 package com.padelium.data.dto
 
+import java.math.BigDecimal
+
 data class GetProfileResponseDTO(
     val activated: Boolean = false,
     val authorities: List<String> = emptyList(),
-    val avoir: Long = 0L,
+    val avoir: BigDecimal,
     val createdBy: String = "",
     val valcreatedDate: String = "",
     val email: String = "",
     val establishmentsIds: String = "",
     val file: String = "",
     val firstName: String = "",
-    val id: Long ,
+    val id: Long,
     val image: String = "",
     val imageUrl: String = "",
     val isOwnerestablishmentsIds: String = "",

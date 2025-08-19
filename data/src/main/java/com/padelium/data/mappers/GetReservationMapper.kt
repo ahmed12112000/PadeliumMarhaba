@@ -70,7 +70,7 @@ class GetReservationMapper @Inject constructor() {
                 isWaitForPay = response.isWaitForPay ?: false,
                 bookingLabelId = response.bookingLabelId ?: 0,
                 bookingLabelName = response.bookingLabelName ?: "",
-                bookingLabelColors = response.bookingLabelColors ?: "",
+                bookingLabelColor = response.bookingLabelColor ?: "",
                 sharedExtrasIds = response.sharedExtrasIds ?: emptyList(),
                 privateExtrasIds = response.privateExtrasIds ?: emptyList(),
                 privateExtrasLocalIds = response.privateExtrasLocalIds ?: mutableMapOf(),

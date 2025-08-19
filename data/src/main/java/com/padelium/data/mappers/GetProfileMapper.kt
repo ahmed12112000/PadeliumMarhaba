@@ -10,7 +10,7 @@ class GetProfileMapper @Inject constructor(){
                 return GetProfileResponse(
                         activated = getPacksResponseList.activated ?: false,
                         authorities = getPacksResponseList.authorities ?: emptyList(),
-                        avoir = (getPacksResponseList.avoir ?: 0L).toString(),
+                        avoir =getPacksResponseList.avoir ,
                         createdBy = getPacksResponseList.createdBy ?: "",
                         valcreatedDate = getPacksResponseList.valcreatedDate ?: "",
                         email = getPacksResponseList.email ?: "",
